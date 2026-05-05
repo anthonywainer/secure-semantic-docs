@@ -1,0 +1,18 @@
+# Development environment overrides.
+# Applied after config.yml, before config.local.yml.
+# Keeps the dev cycle fast: smaller chunks, fewer results, isolated collection.
+
+pipeline:
+  chunk_size: 300
+  default_top_k: 3
+
+storage:
+  chroma_collection_name: docsec_dev
+
+spark:
+  shuffle_partitions: 2
+  driver_memory: 1g
+
+writers:
+  parquet:
+    compression: none

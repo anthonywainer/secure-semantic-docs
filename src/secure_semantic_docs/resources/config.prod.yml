@@ -1,0 +1,25 @@
+# Production overrides applied when DOCSEC_ENV=prod (Docker simulation).
+# Deep-merged on top of config.yml + config.dev.yml.
+
+iceberg:
+  enabled: true
+  catalog_name: local
+  catalog_type: rest
+  catalog_uri: http://iceberg-rest:8181
+  warehouse: /app/lakehouse/iceberg_warehouse
+  # Table layout: <catalog>.<layer_schema>.<table>
+  #   bronze layer -> local.bronze.documents
+  #   silver layer -> local.silver.chunks
+  #   gold layer   -> local.gold.embeddings
+  # Schemas are created automatically with CREATE NAMESPACE IF NOT EXISTS.
+  # Pre-downloaded JAR at build time (see docker/Dockerfile ARG ICEBERG_JAR_URL).
+  # Use spark.jars (local path) instead of spark.jars.packages (Maven) so Docker
+  # starts without requiring internet access.
+  # For Spark 4.x: rebuild with ICEBERG_JAR_URL pointing to iceberg-spark-runtime-4.0_2.13.
+  spark_packages: ""
+  spark_jars: "/opt/spark/jars/iceberg-spark-runtime.jar"
+
+spark:
+  shuffle_partitions: 8
+  driver_memory: 4g
+  executor_memory: 2g

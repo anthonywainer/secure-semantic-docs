@@ -1,0 +1,83 @@
+# Base configuration for docsec.
+# All environments start from these defaults.
+# Override via config.dev.yml (committed) or config.local.yml (git-ignored).
+
+embedding:
+  model: all-MiniLM-L6-v2
+  dim: 384
+
+pipeline:
+  chunk_size: 400
+  chunk_overlap: 80
+  default_top_k: 5
+  retrieval_candidate_multiplier: 4
+
+storage:
+  chroma_collection_name: docsec_v1
+
+security:
+  secret_key_env_var: DOCSEC_SECRET_KEY
+
+# Iceberg is disabled locally -- Parquet is used as the default lakehouse format.
+# Enable via config.prod.yml (DOCSEC_ENV=prod) for the Docker production simulation.
+iceberg:
+  enabled: false
+  catalog_name: local
+  catalog_type: rest
+  catalog_uri: http://iceberg-rest:8181
+  warehouse: /app/lakehouse/iceberg_warehouse
+  # Table layout: <catalog>.<layer_schema>.<table>
+  #   bronze layer -> local.bronze.documents
+  #   silver layer -> local.silver.chunks
+  #   gold layer   -> local.gold.embeddings
+  # Schemas are created automatically with CREATE NAMESPACE IF NOT EXISTS.
+  # For PySpark 3.5: org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.1
+  # For PySpark 4.x: update to org.apache.iceberg:iceberg-spark-runtime-4.0_2.13:<version>
+  spark_packages: "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.1"
+  spark_jars: ""
+
+spark:
+  app_name: DocsecPipeline
+  master: "local[*]"
+  shuffle_partitions: 4
+  driver_memory: 2g
+  executor_memory: 1g
+  log_level: WARN
+
+readers:
+  parquet:
+    merge_schema: true
+    path_glob_filter: "*.parquet"
+  json:
+    multiline: false
+    encoding: utf-8
+    allow_comments: false
+    allow_unquoted_field_names: false
+  csv:
+    header: true
+    infer_schema: true
+    delimiter: ","
+    encoding: utf-8
+    quote: '"'
+    escape: "\\"
+    null_value: ""
+
+writers:
+  parquet:
+    compression: snappy
+    mode: overwrite
+    partition_overwrite_mode: dynamic
+  json:
+    compression: none
+    mode: overwrite
+    date_format: "yyyy-MM-dd"
+    timestamp_format: "yyyy-MM-dd'T'HH:mm:ss'Z'"
+  csv:
+    header: true
+    compression: none
+    mode: overwrite
+    delimiter: ","
+    quote: '"'
+    escape: "\\"
+    null_value: ""
+    date_format: "yyyy-MM-dd"
