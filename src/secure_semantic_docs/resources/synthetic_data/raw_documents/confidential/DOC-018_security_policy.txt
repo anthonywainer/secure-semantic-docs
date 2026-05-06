@@ -1,0 +1,26 @@
+SECURITY POLICY: CRYPTOGRAPHIC STANDARDS
+==========================================
+Owner: Security | Classification: Confidential | Retention: Permanent
+
+1. APPROVED ALGORITHMS
+- Symmetric encryption: NaCl SecretBox (XSalsa20-Poly1305).
+- Asymmetric encryption: NaCl Box (Curve25519 / XSalsa20-Poly1305).
+- Hashing: SHA-256 or stronger for data integrity.
+- Password hashing: Argon2id (NaCl pwhash).
+
+2. PROHIBITED
+- MD5 and SHA-1 for security-sensitive operations.
+- Custom cryptographic implementations.
+- ECB mode for any block cipher.
+
+3. KEY MANAGEMENT
+- Keys must never be stored in source code or config files.
+- Production keys are managed via the secrets manager.
+- Keys are rotated annually or immediately after a suspected compromise.
+- Emergency key rotation contact: tracynelson@example.com
+
+4. IMPLEMENTATION
+Use PyNaCl for all cryptographic operations in Python. Token sample
+(for testing only, not a real credential): tok_58d69fca7c6cd2b3f093add03b235d27
+
+Compliance lead: EMP-065627

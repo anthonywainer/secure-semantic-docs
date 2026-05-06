@@ -1,0 +1,27 @@
+AUDIT LOG POLICY AND PROCEDURES
+================================
+Owner: Security | Classification: Internal | Retention: 5 years
+
+1. PURPOSE
+Define the requirements for audit logging across all platform components.
+
+2. WHAT MUST BE LOGGED
+- All authentication events (success and failure).
+- All data access events involving Restricted or Confidential data.
+- All administrative actions (permission changes, key rotations).
+- All semantic search queries (user, query, results returned, timestamp).
+
+3. LOG FORMAT
+Logs must be structured JSON with fields: timestamp, user_id, action,
+resource, result, ip_address.
+
+4. RETENTION
+Audit logs are retained for a minimum of 5 years in immutable storage.
+
+5. ACCESS
+Audit logs are accessible only to security engineers and compliance
+officers. Any access is itself logged.
+
+Contact for log access requests: mary70@example.net
+Log system owner: EMP-805310
+Reference: PROJ-KND-271

@@ -1,0 +1,24 @@
+DATA RETENTION SCHEDULE
+========================
+Owner: Legal | Classification: Internal | Retention: Permanent
+
+PURPOSE
+Define the minimum and maximum retention periods for all data
+categories managed by the platform.
+
+RETENTION PERIODS
+
+| Data Category          | Minimum | Maximum | Legal Basis          |
+|------------------------|---------|---------|----------------------|
+| Employee records       | 7 years | 10 years| Labour law           |
+| Financial transactions | 7 years | 10 years| Tax law              |
+| Audit logs             | 5 years | 7 years | Compliance policy    |
+| Pipeline metadata      | 2 years | 5 years | Operational need     |
+| Raw documents (public) | 1 year  | 3 years | Business need        |
+| Incident reports       | 3 years | 7 years | Risk management      |
+
+DELETION PROCESS
+Data past its maximum retention period is deleted in the first week of
+each quarter. Deletion requests are logged with approver EMP-158692.
+
+CONTACT: nolanjason@example.org

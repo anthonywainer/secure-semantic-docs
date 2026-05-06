@@ -1,0 +1,29 @@
+MODEL GOVERNANCE POLICY
+========================
+Owner: Data Platform | Classification: Internal | Retention: 5 years
+
+1. PURPOSE
+Define the standards for selecting, deploying, and monitoring machine
+learning models used in the data platform.
+
+2. MODEL REGISTRY
+All models used in production must be registered in the model registry
+with: name, version, training data source, evaluation metrics, and owner.
+
+3. APPROVAL PROCESS
+Model promotion to production requires:
+- Offline evaluation meeting defined accuracy thresholds.
+- Security review for models processing sensitive data.
+- Sign-off from the platform lead and compliance officer.
+
+4. MONITORING
+Production models are monitored for data drift and performance
+degradation. Alerts are raised when metrics fall below baseline.
+
+5. RETRAINING
+Models are retrained on a defined schedule or when drift is detected.
+Retraining jobs reference project code: PROJ-SDE-344
+
+6. CONTACT
+Model governance lead: colleenbaker@example.org
+Compliance owner: EMP-232812

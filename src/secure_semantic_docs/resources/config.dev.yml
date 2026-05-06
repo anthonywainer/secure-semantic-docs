@@ -1,0 +1,11 @@
+# Development environment overrides.
+# Applied after config.yml, before config.local.yml.
+
+spark_confs:
+  spark.sql.shuffle.partitions: 2
+  spark.driver.memory: 1g
+
+writers:
+  bronze_documents:
+    options:
+      compression: none

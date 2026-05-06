@@ -1,0 +1,22 @@
+PLATFORM SLA AND MONITORING STANDARDS
+======================================
+Owner: Operations | Classification: Internal | Retention: 3 years
+
+SERVICE LEVEL OBJECTIVES
+
+| Service            | Availability | Latency (p99) | Recovery Time |
+|--------------------|--------------|---------------|---------------|
+| Bronze ingestion   | 99.5%        | < 30 min/run  | < 2 hours     |
+| Silver processing  | 99.5%        | < 60 min/run  | < 2 hours     |
+| Semantic search API| 99.9%        | < 500 ms      | < 30 min      |
+| Chroma vector store| 99.9%        | < 100 ms      | < 30 min      |
+
+MONITORING STACK
+- Pipeline metrics: Spark UI + custom Prometheus exporters.
+- Alerting: PagerDuty for P1/P2; Slack for P3/P4.
+- Dashboards: Grafana (project ref: PROJ-YNO-699).
+
+ON-CALL
+On-call rotation is weekly. Escalation after 15 minutes with no
+acknowledgement goes to the platform lead.
+Contact: ewilson@example.com

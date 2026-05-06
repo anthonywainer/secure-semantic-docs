@@ -1,0 +1,28 @@
+EMBEDDING MODEL EVALUATION REPORT
+==================================
+Department: Data Platform | Classification: Internal
+
+OBJECTIVE
+Evaluate candidate sentence embedding models for the semantic search
+pipeline with respect to accuracy, latency, and resource requirements.
+
+MODELS EVALUATED
+
+all-MiniLM-L6-v2 (selected)
+- Dimensions: 384
+- Retrieval accuracy (NDCG@10): 0.71
+- Inference latency (batch 32): 12 ms
+- Licence: Apache 2.0
+
+bge-base-en-v1.5
+- Dimensions: 768
+- Retrieval accuracy (NDCG@10): 0.78
+- Inference latency (batch 32): 28 ms
+- Licence: Apache 2.0
+
+RECOMMENDATION
+Use all-MiniLM-L6-v2 for the initial release. Upgrade to bge-base-en
+when retrieval accuracy becomes the primary constraint.
+
+Project reference: PROJ-WUY-196
+Evaluation lead: raymondramirez@example.org

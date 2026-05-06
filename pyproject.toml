@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=82", "wheel==0.47"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secure-semantic-docs"
+version = "0.1.0"
+description = "Secure semantic document search architecture"
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "MIT" }
+dependencies = [
+    "pyspark==4.1.1",
+    "PyYAML==6.0.3"
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.0.3",
+    "pytest-cov==7.1.0",
+    "ruff==0.15.12"
+]
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "PIE", "RET"]
+ignore = ["E501", "I001"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests that require external infrastructure"
+]

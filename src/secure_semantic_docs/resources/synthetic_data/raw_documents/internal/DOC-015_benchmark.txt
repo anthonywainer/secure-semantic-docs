@@ -1,0 +1,30 @@
+VECTOR DATABASE PERFORMANCE BENCHMARKS
+========================================
+Department: Data Platform | Classification: Internal
+
+PURPOSE
+Establish baseline performance metrics for Chroma under realistic
+production load conditions.
+
+TEST CONFIGURATION
+- Dataset: 50,000 document chunks, 384-dim embeddings.
+- Hardware: 8-core CPU, 32 GB RAM (no GPU).
+- Chroma version: 0.5.x persistent mode.
+
+RESULTS
+
+Upsert throughput: 1,200 chunks/second (batch size 256)
+Query latency (p50): 18 ms
+Query latency (p99): 64 ms
+Recall@10 (cosine): 0.94
+
+OBSERVATIONS
+Performance is acceptable for the current dataset size. At 500k+ chunks,
+consider switching to a horizontally scalable backend.
+
+NEXT STEPS
+- Benchmark with metadata pre-filtering enabled.
+- Evaluate ANN index tuning parameters.
+
+Project reference: PROJ-PEN-200
+Lead: nramos@example.net

@@ -1,0 +1,27 @@
+ACCESS CONTROL POLICY v3
+=========================
+Owner: Security | Classification: Internal | Retention: Permanent
+
+1. PRINCIPLES
+- Least privilege: users receive the minimum access needed for their role.
+- Need-to-know: access to sensitive data requires business justification.
+- Regular review: access rights are reviewed quarterly.
+
+2. ROLES AND PERMISSIONS
+
+| Role               | Bronze | Silver | Gold | Chroma | Admin |
+|--------------------|--------|--------|------|--------|-------|
+| data_engineer      | RW     | RW     | R    | R      | N     |
+| platform_engineer  | RW     | RW     | RW   | RW     | Y     |
+| business_analyst   | R      | R      | R    | R      | N     |
+| security_engineer  | R      | R      | R    | R      | N     |
+| compliance_officer | R      | R      | R    | R      | N     |
+
+3. PROVISIONING
+Access requests must be submitted via the IT portal.
+Emergency access is granted by the security lead (michaeljones@example.net).
+All provisioning is logged against employee ID EMP-595148.
+
+4. REVOCATION
+Access is revoked automatically on offboarding and immediately on
+security incidents.

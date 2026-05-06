@@ -1,0 +1,23 @@
+SEMANTIC SEARCH ARCHITECTURE OVERVIEW
+======================================
+Department: Data Platform | Classification: Public
+
+PURPOSE
+Enable natural-language document retrieval across the enterprise
+knowledge base with role-based access control.
+
+PIPELINE STAGES
+1. Ingestion (Bronze): raw documents ingested as-is with metadata.
+2. Chunking (Silver): documents split into overlapping text chunks.
+3. Embedding (Gold): chunks embedded with SentenceTransformers.
+4. Vector Store: embeddings upserted into Chroma with permission tags.
+5. Retrieval: query embedded at runtime; results filtered by user role.
+
+SECURITY MODEL
+- Documents encrypted at rest using PyNaCl SecretBox.
+- Permission metadata propagated from Bronze through to Chroma.
+- Retrieval enforces role-based filtering; audit log records every query.
+
+SCALABILITY
+The pipeline runs on PySpark and scales horizontally. Chroma can be
+replaced with a managed vector database for production scale.

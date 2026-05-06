@@ -1,0 +1,25 @@
+PAYROLL POLICY AND EXCEPTION HANDLING
+======================================
+Owner: Finance | Classification: Restricted | Retention: 7 years
+
+1. SCOPE
+This policy governs payroll processing and exception handling for all
+employees and contractors.
+
+2. PROCESSING SCHEDULE
+Payroll is processed on the last business day of each month.
+Exceptions submitted after day 25 will be applied in the following cycle.
+
+3. EXCEPTION TYPES
+- Overtime: must be pre-approved by the department head.
+- Expense reimbursements: submitted via the HR portal (ref: EMP-118384).
+- Salary adjustments: require Finance Manager approval.
+
+4. CONFIDENTIALITY
+Payroll data is classified Restricted. Access is limited to Finance and HR.
+Any unauthorised disclosure must be reported immediately to: smithchristine@example.net
+
+5. AUDIT
+All payroll transactions are logged and retained for 7 years.
+Discrepancies should be escalated to the Finance Manager with amount
+reference: $808,412.41
