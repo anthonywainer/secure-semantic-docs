@@ -1,0 +1,27 @@
+COMPLIANCE POLICY: GDPR DATA HANDLING
+======================================
+Owner: Legal | Classification: Internal | Retention: 7 years
+
+1. SCOPE
+This policy applies to all personal data processed by the data platform.
+
+2. PRINCIPLES
+- Lawfulness: data is processed only with a valid legal basis.
+- Purpose limitation: data is not used beyond the stated purpose.
+- Data minimisation: only necessary data is collected.
+- Storage limitation: data is deleted per the retention schedule.
+
+3. SUBJECT RIGHTS
+Individuals may request access, correction, or deletion of their data.
+Requests must be fulfilled within 30 days. Contact: esanchez@example.com
+
+4. DATA TRANSFERS
+Cross-border transfers require either an adequacy decision or standard
+contractual clauses approved by Legal.
+
+5. BREACH NOTIFICATION
+Breaches affecting personal data must be reported to the DPO within
+72 hours of discovery. Employee ID of the reporting officer: EMP-311656
+
+6. ENFORCEMENT
+Non-compliance may result in disciplinary action and regulatory fines.

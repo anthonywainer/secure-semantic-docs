@@ -1,0 +1,28 @@
+SECURITY AUDIT REPORT: DATA PLATFORM Q3
+========================================
+Prepared by: Security Engineering | Classification: Confidential
+
+EXECUTIVE SUMMARY
+A comprehensive security audit of the data platform was conducted in Q3.
+6 findings were identified, ranging from informational to high severity.
+
+FINDINGS
+
+HIGH
+- API token tok_9d52e196eb5a9b27a8ee841b24d15e56 was found in a developer's local config file.
+  Remediation: token rotated; secret scanning added to pre-commit hooks.
+
+MEDIUM
+- S3 bucket lifecycle policy missing on raw data prefix.
+  Remediation: lifecycle rule applied; retention aligned with policy.
+
+LOW
+- Spark UI accessible without authentication on dev cluster.
+  Remediation: UI restricted to VPN; authentication added.
+
+REMEDIATION STATUS
+All high findings resolved. Medium and low findings tracked in the
+security backlog. Next audit scheduled for Q4.
+
+CONTACT
+Audit lead: novaksara@example.org | Report ID: PROJ-SUY-746

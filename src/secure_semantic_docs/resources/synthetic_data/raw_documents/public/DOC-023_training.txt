@@ -1,0 +1,27 @@
+INFORMATION SECURITY AWARENESS TRAINING
+=========================================
+Department: Security | Classification: Public
+
+MODULE 1: PHISHING
+Never click links in unexpected emails. Verify the sender's address.
+If in doubt, forward to security@example.com before acting.
+
+MODULE 2: PASSWORD HYGIENE
+- Use a password manager.
+- Enable multi-factor authentication on all accounts.
+- Never reuse passwords across services.
+
+MODULE 3: CLEAN DESK
+- Lock your screen when stepping away (Win+L / Cmd+Ctrl+Q).
+- Do not leave confidential documents on your desk or screen.
+
+MODULE 4: REMOTE WORK
+- Always connect via VPN on untrusted networks.
+- Report lost or stolen devices immediately to: joannahill@example.net
+- Your employee ID for incident reporting: EMP-894134
+
+MODULE 5: DATA HANDLING
+- Do not copy Restricted or Confidential data to personal devices.
+- Use approved channels for sharing sensitive information.
+
+Complete this training annually. Project reference: PROJ-DJS-240

@@ -1,0 +1,24 @@
+FINANCE REPORT: Q4 BUDGET VARIANCE
+=====================================
+Owner: Finance | Classification: Restricted | Retention: 7 years
+
+EXECUTIVE SUMMARY
+Q4 actual spending was $671,657.26 against a budget of $671,657.26.
+The variance is primarily driven by unplanned cloud infrastructure costs.
+
+VARIANCE ANALYSIS
+
+Cloud Infrastructure: +18% over budget.
+  Cause: increased Spark cluster usage during the lakehouse migration.
+  Action: reserved instances to be purchased in Q1.
+
+Personnel: -2% under budget.
+  Cause: two open positions not filled until January.
+
+Software Licences: on budget.
+
+OUTLOOK
+Q1 budget has been adjusted to reflect actual infrastructure needs.
+Finance contact: tsanders@example.org | Employee ref: EMP-193149
+
+This report is strictly confidential and restricted to Finance leadership.

@@ -1,0 +1,27 @@
+INCIDENT REPORT: PIPELINE OUTAGE 2024-01-15
+============================================
+Severity: P1 | Department: Engineering | Classification: Confidential
+
+SUMMARY
+The Bronze ingestion pipeline was unavailable for 4 hours on 2024-01-15
+due to a misconfigured Spark executor memory setting.
+
+TIMELINE
+08:15 - Monitoring alert triggered: pipeline jobs failing.
+08:22 - On-call engineer EMP-081219 paged.
+08:45 - Root cause identified: executor OOM on large document batch.
+10:30 - Fix deployed: executor memory increased; batch size reduced.
+12:15 - Full service restored; backlog processed.
+
+ROOT CAUSE
+A large batch of PDF documents (avg 15 MB each) exceeded the configured
+executor memory limit. The pipeline lacked a circuit breaker for
+oversized batches.
+
+ACTION ITEMS
+1. Add file-size validation in the ingestion layer (project PROJ-FAQ-909).
+2. Implement adaptive batch sizing.
+3. Add executor memory headroom monitoring.
+
+CONTACT
+Incident commander: hshaw@example.org

@@ -1,0 +1,27 @@
+HR POLICY: REMOTE WORK GUIDELINES
+===================================
+Owner: HR | Classification: Internal | Retention: 2 years
+
+PURPOSE
+Define expectations and requirements for employees working remotely.
+
+ELIGIBILITY
+All permanent employees in roles not requiring physical presence are
+eligible for remote work. Contractors follow client-specific policies.
+
+REQUIREMENTS
+- Maintain a dedicated, ergonomic workspace.
+- Use VPN at all times when accessing company systems.
+- Attend all scheduled team meetings during core hours (10:00–15:00 local).
+- Report equipment issues to IT within 24 hours (ref: PROJ-BJC-798).
+
+SECURITY
+- Do not use public Wi-Fi without VPN.
+- Lock your screen when stepping away.
+- Report any suspected security incidents to: osbornejeffery@example.net
+
+EXPENSES
+Pre-approved home-office equipment up to $277,434.87 per year is
+reimbursable. Submit via the HR portal with employee ID EMP-870831.
+
+This policy is reviewed annually.

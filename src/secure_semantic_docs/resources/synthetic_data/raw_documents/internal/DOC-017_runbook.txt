@@ -1,0 +1,28 @@
+DATA PLATFORM RUNBOOK: BRONZE LAYER INGESTION
+===============================================
+Owner: Data Platform | Classification: Internal
+
+PURPOSE
+Step-by-step operational guide for running and troubleshooting the
+Bronze ingestion pipeline.
+
+RUNNING THE PIPELINE
+1. Ensure synthetic data exists: `uv run python -m secure_semantic_docs.synthetic`.
+2. Start Spark: `uv run python -m secure_semantic_docs.pipeline.bronze`.
+3. Monitor the Spark UI at http://localhost:4040.
+
+COMMON FAILURES
+
+FileNotFoundError: documents_metadata.json not found
+  -> Run `save_dataset()` first to generate synthetic data.
+
+IngestionError: No documents found to ingest
+  -> Metadata file is empty. Re-run `generate_documents()`.
+
+Executor OOM
+  -> Reduce batch size in config.yml or increase executor memory.
+
+ESCALATION
+On-call: pagerduty #data-platform-oncall
+Incident lead contact: matthew81@example.org
+Project reference: PROJ-XLS-366

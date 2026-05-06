@@ -1,0 +1,26 @@
+OPEN SOURCE TOOLS EVALUATION SUMMARY
+=====================================
+Department: Engineering | Classification: Public
+
+This document summarises the evaluation of open-source tools considered
+for the semantic search platform.
+
+VECTOR STORE
+- Chroma: selected. Lightweight, Python-native, supports metadata filters.
+- Weaviate: capable but operationally heavier.
+- Qdrant: strong performance, considered for future scale-out.
+
+EMBEDDING MODEL
+- all-MiniLM-L6-v2: selected for demo (fast, 384-dim, open licence).
+- bge-base-en: alternative for higher accuracy requirements.
+
+LAKEHOUSE FORMAT
+- Apache Iceberg: selected. ACID, time-travel, broad ecosystem support.
+- Delta Lake: strong candidate, excluded due to licence.
+
+ORCHESTRATION
+- Evaluated Airflow, Prefect, and Dagster. Decision deferred to Phase 2.
+
+CONCLUSION
+The selected stack (PySpark + Iceberg + Chroma + SentenceTransformers)
+provides a production-grade, fully open-source semantic search pipeline.

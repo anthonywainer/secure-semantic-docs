@@ -1,0 +1,29 @@
+PYSPARK BEST PRACTICES GUIDE
+=============================
+Department: Data Platform | Classification: Public
+
+1. IMPORTS
+Import only specific functions from pyspark.sql.functions.
+Do not alias the module as F.
+
+2. DATAFRAME OPERATIONS
+- Chain transformations with parentheses, not backslashes.
+- Combine multiple .filter() calls into a single expression.
+- Use .select() instead of repeated .withColumn() chains.
+- Avoid .collect() on large datasets; prefer foreachPartition.
+
+3. JOINS
+- Filter both DataFrames before joining.
+- Use broadcast() for small lookup tables.
+- Avoid right joins; reverse the join order instead.
+
+4. PERFORMANCE
+- Cache DataFrames that are reused multiple times.
+- Set spark.sql.shuffle.partitions explicitly.
+- Use Parquet or Iceberg for all persistent storage.
+
+5. TESTING
+- Test transformation logic with small in-memory DataFrames.
+- Mock Spark in unit tests; use a real session in integration tests.
+
+Reference project: PROJ-VWS-568

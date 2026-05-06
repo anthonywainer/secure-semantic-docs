@@ -1,0 +1,6 @@
+# Runtime dependencies — Python 3.14
+# Generated from pyproject.toml. Install with:
+#   uv pip install -r requirements.txt
+#   pip install -r requirements.txt
+pyspark==4.1.1
+PyYAML==6.0.3

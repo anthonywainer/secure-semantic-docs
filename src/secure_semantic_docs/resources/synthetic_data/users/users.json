@@ -1,0 +1,37 @@
+[
+  {
+    "user_id": "USR-001",
+    "name": "Alice Nguyen",
+    "role": "data_engineer",
+    "department": "Data Platform",
+    "clearance_level": "internal"
+  },
+  {
+    "user_id": "USR-002",
+    "name": "Bob Martinez",
+    "role": "business_analyst",
+    "department": "Operations",
+    "clearance_level": "internal"
+  },
+  {
+    "user_id": "USR-003",
+    "name": "Carol Smith",
+    "role": "security_engineer",
+    "department": "Security",
+    "clearance_level": "confidential"
+  },
+  {
+    "user_id": "USR-004",
+    "name": "David Chen",
+    "role": "finance_manager",
+    "department": "Finance",
+    "clearance_level": "restricted"
+  },
+  {
+    "user_id": "USR-005",
+    "name": "Eve Johnson",
+    "role": "external_viewer",
+    "department": "External",
+    "clearance_level": "public"
+  }
+]

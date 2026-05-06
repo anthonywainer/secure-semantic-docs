@@ -1,0 +1,54 @@
+# Base configuration for docsec.
+# All environments start from these defaults.
+# Override via config.dev.yml (committed) or config.local.yml (git-ignored).
+
+iceberg:
+  enabled: false
+  catalog_name: local
+  catalog_type: rest
+  catalog_uri: http://iceberg-rest:8181
+  warehouse: /app/lakehouse/iceberg_warehouse
+
+# Framework-level controls: managed, log_level.
+# All other keys are raw Spark configuration key-value pairs passed
+# directly to SparkConf. Use actual Spark conf key names (dotted notation).
+spark_confs:
+  managed: false
+  log_level: WARN
+  spark.master: "local[*]"
+  spark.app.name: DocSecPipeline
+  spark.sql.shuffle.partitions: 4
+  spark.driver.memory: 2g
+  spark.executor.memory: 1g
+  spark.jars.packages: "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.1"
+
+readers:
+  bronze_documents:
+    stream: false
+    options:
+      format: parquet
+      mergeSchema: "true"
+      path: "{env[DOCSEC_PROJECT_ROOT]}/lakehouse/bronze_documents"
+
+  metadata_documents:
+    stream: false
+    options:
+      format: json
+      path: "{resources}/synthetic_data/metadata/documents_metadata.json"
+
+  raw_documents:
+    stream: false
+    options:
+      format: text
+      wholetext: "true"
+      recursiveFileLookup: "true"
+      path: "{resources}/synthetic_data/raw_documents"
+
+writers:
+  bronze_documents:
+    stream: false
+    options:
+      format: parquet
+      mode: overwrite
+      compression: snappy
+      path: "{env[DOCSEC_PROJECT_ROOT]}/lakehouse/bronze_documents"

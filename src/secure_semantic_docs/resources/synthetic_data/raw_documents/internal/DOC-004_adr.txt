@@ -1,0 +1,25 @@
+ARCHITECTURE DECISION RECORD: LAKEHOUSE MIGRATION
+==================================================
+ADR-042 | Status: Accepted | Date: 2024-03-12
+
+CONTEXT
+The legacy data warehouse could not support the volume of unstructured
+documents required by the semantic search initiative. A modern lakehouse
+was selected to provide flexibility and open formats.
+
+DECISION
+Migrate to an Apache Iceberg lakehouse with a Bronze / Silver / Gold
+medallion architecture. Use PySpark as the compute engine.
+
+CONSEQUENCES
+Positive:
+- Open table format enables time-travel and schema evolution.
+- Decoupled storage and compute reduce cost.
+
+Negative:
+- Migration effort estimated at 3 sprints (project code PROJ-ARU-848).
+- Team upskilling on Iceberg required.
+
+ALTERNATIVES CONSIDERED
+- Delta Lake: rejected due to licence constraints.
+- Hudi: rejected due to limited Python ecosystem support.

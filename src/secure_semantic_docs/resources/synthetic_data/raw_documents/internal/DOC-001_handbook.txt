@@ -1,0 +1,26 @@
+DATA PLATFORM ENGINEERING HANDBOOK
+===================================
+Version: 2.4 | Department: Data Platform | Classification: Internal
+
+1. INTRODUCTION
+This handbook defines standards for all data platform engineering work.
+Engineers are expected to follow these guidelines to ensure consistency,
+reliability, and security across the lakehouse.
+
+2. ARCHITECTURE OVERVIEW
+The platform is built on a medallion lakehouse (Bronze / Silver / Gold)
+using Apache Iceberg on object storage. PySpark is the compute engine.
+
+3. DEVELOPMENT STANDARDS
+- All code must pass ruff format and ruff check before merging.
+- Unit tests are mandatory for every new module.
+- Secrets must never be hard-coded; use the OS keyring or env vars.
+- Contact the platform team at project code PROJ-TPS-083 for access.
+
+4. ONBOARDING CHECKLIST
+- Clone the repository and install dependencies via uv.
+- Request data platform access through your manager.
+- Complete the security awareness training within your first week.
+
+5. CONTACT
+Platform engineering channel: #data-platform-eng

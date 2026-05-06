@@ -1,0 +1,25 @@
+DATA QUALITY POLICY v2
+=======================
+Owner: Data Platform | Classification: Internal | Retention: 5 years
+
+1. PURPOSE
+This policy defines the data quality standards that all datasets
+ingested into the lakehouse must meet before promotion to Silver.
+
+2. QUALITY DIMENSIONS
+- Completeness: mandatory fields must not be null.
+- Accuracy: values must match defined enumeration sets.
+- Timeliness: ingestion lag must not exceed SLA thresholds.
+- Consistency: referential integrity across layers must hold.
+
+3. ENFORCEMENT
+Quality checks are run automatically by the pipeline after each
+Bronze write. Failing datasets are quarantined in a _rejected
+partition and an alert is raised in the monitoring channel.
+
+4. ESCALATION
+Unresolved quality failures older than 24h must be escalated to
+the platform lead. Reference project code PROJ-ENK-564 in tickets.
+
+5. REVIEW
+This policy is reviewed annually or after any major incident.

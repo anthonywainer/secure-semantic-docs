@@ -1,0 +1,24 @@
+CLIENT CONTRACT SUMMARY: STRATEGIC PARTNERSHIP
+================================================
+Owner: Legal | Classification: Restricted | Retention: 10 years
+
+PARTIES
+Client: [Redacted per NDA] | Client ID: CLT-XI-64005
+Vendor: Example Corp
+
+CONTRACT HIGHLIGHTS
+- Term: 3 years, renewable annually.
+- Total contract value: $801,128.05
+- Governing law: Delaware, USA.
+
+KEY OBLIGATIONS
+Vendor must deliver the data platform integration by the milestone dates
+defined in Exhibit A. SLA penalties apply for availability below 99.5%.
+
+CONFIDENTIALITY
+All contract terms are confidential. Disclosure to any third party
+without written consent constitutes a material breach.
+
+CONTACT
+Legal lead: jenniferharris@example.net
+Contract reference: PROJ-JTB-427
