@@ -16,8 +16,10 @@ Reader/writer entries use the format::
         stream: false
         options:
           format: csv
-          path: "{env[MY_DIR]}/synthetic_data/my_source.csv"
+          path: "{project_root}/synthetic_data/my_source.csv"
 
+Values of the form ``{project_root}`` expand to the resolved project root.
+Values of the form ``{resources}`` expand to the bundled resources directory.
 Values of the form ``{env[VAR]}`` are expanded from environment variables at
 load time.  Unknown variables expand to an empty string.
 """
@@ -30,35 +32,43 @@ from secure_semantic_docs.core.logging import get_logger
 from secure_semantic_docs.core.settings import BaseSettings
 from secure_semantic_docs.loader.yaml_utils import deep_merge, load_yaml_file
 from secure_semantic_docs.models.config_model import Config
+from secure_semantic_docs.models.chunking_model import ChunkingConfig
 from secure_semantic_docs.models.reader_models import ReaderEntry, ReadersConfig
 from secure_semantic_docs.models.spark_models import IcebergConfig, SparkConfig
 from secure_semantic_docs.models.writer_models import WriterEntry, WritersConfig
 
-_RESOURCES_DIR = Path(__file__).resolve().parent.parent / "resources"
+_RESOURCES_DIR = BaseSettings.resources_dir
 _BUNDLED_BASE = [_RESOURCES_DIR / "config.yml", _RESOURCES_DIR / "config.dev.yml"]
 _BUNDLED_PROD = _RESOURCES_DIR / "config.prod.yml"
 
-_ENV_PATTERN = re.compile(r"\{env\[([^\]]+)\]\}")
-_RESOURCES_PATTERN = re.compile(r"\{resources\}")
+_ENV_PATTERN = re.compile(r"\{env\[([^]]+)]}")
+_RESOURCES_PATTERN = re.compile(r"\{resources}")
+_PROJECT_ROOT_PATTERN = re.compile(r"\{project_root}")
 
 logger = get_logger(BaseSettings.APP_NAME)
 
 
 def _expand_env(value: str, project_root: Path) -> str:
-    """Expand ``{env[VAR]}`` and ``{resources}`` placeholders.
+    """Expand ``{env[VAR]}``, ``{resources}``, and ``{project_root}`` placeholders.
 
     ``{env[DOCSEC_PROJECT_ROOT]}`` resolves to *project_root* when the
     environment variable is not set, so paths are always valid.
+    ``{project_root}`` is a direct shorthand for the same value.
     """
 
-    def _resolve_var(m: re.Match) -> str:
+    def _resolve_var(m: re.Match[str]) -> str:
         var = m.group(1)
         if var == BaseSettings.DOCSEC_PROJECT_ROOT:
             return os.environ.get(var) or str(project_root)
-        return os.environ.get(var, "")
+        return os.environ.get(var) or ""
 
-    value = _ENV_PATTERN.sub(_resolve_var, value)
-    return _RESOURCES_PATTERN.sub(str(_RESOURCES_DIR), value)
+    return _PROJECT_ROOT_PATTERN.sub(
+        str(project_root),
+        _RESOURCES_PATTERN.sub(
+            str(_RESOURCES_DIR),
+            _ENV_PATTERN.sub(_resolve_var, value)
+        )
+    )
 
 
 def _expand_options(options: dict, project_root: Path) -> dict:
@@ -128,15 +138,7 @@ def load_config(project_root: Path | None = None) -> Config:
         then auto-detected as four directories above this file.
     """
     if project_root is None:
-        env_root = (
-                os.environ.get(BaseSettings.DOCSEC_PROJECT_ROOT)
-                or os.environ.get(BaseSettings.DOCSEC_PROJECT_ROOT_LEGACY)
-        )
-        project_root = (
-            Path(env_root)
-            if env_root
-            else Path(__file__).resolve().parent.parent.parent.parent
-        )
+        project_root = BaseSettings.project_root
 
     logger.debug("Loading config -- project_root=%s", project_root)
 
@@ -156,7 +158,8 @@ def load_config(project_root: Path | None = None) -> Config:
         spark=_build_spark_config(raw.get("spark_confs") or {}),
         iceberg=IcebergConfig(**raw["iceberg"]),
         readers=_build_readers(raw.get("readers") or {}, project_root),
-        writers=_build_writers(raw.get("writers") or {}, project_root)
+        writers=_build_writers(raw.get("writers") or {}, project_root),
+        chunking=ChunkingConfig(**raw.get("chunking") or {})
     )
 
     logger.info(

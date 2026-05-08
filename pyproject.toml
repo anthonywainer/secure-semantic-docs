@@ -4,11 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "secure-semantic-docs"
-version = "0.1.0"
+version = "0.2.0"
 description = "Secure semantic document search architecture"
 readme = "README.md"
 requires-python = ">=3.14"
 license = { text = "MIT" }
+authors = [{ name = "AnthonyWainer" }]
 dependencies = [
     "pyspark==4.1.1",
     "PyYAML==6.0.3"

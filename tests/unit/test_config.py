@@ -16,7 +16,7 @@ from secure_semantic_docs.loader import (
     WritersConfig,
     deep_merge,
     load_config,
-    load_yaml_file,
+    load_yaml_file
 )
 
 
@@ -167,22 +167,39 @@ class TestEnvExpansion:
         cfg = load_config(project_root=tmp_path)
         assert cfg.readers["src"].options["path"] == "/x"
 
+    def test_project_root_placeholder_expanded(self, tmp_path):
+        (tmp_path / "config.local.yml").write_text(
+            "readers:\n  lake:\n    options:\n      path: \"{project_root}/lakehouse\"\n"
+        )
+        cfg = load_config(project_root=tmp_path)
+        assert cfg.readers["lake"].options["path"] == str(tmp_path / "lakehouse")
+
+    def test_docsec_project_root_env_placeholder_falls_back_to_root(
+            self, tmp_path, monkeypatch
+    ):
+        monkeypatch.delenv("DOCSEC_PROJECT_ROOT", raising=False)
+        (tmp_path / "config.local.yml").write_text(
+            "readers:\n  lake:\n    options:\n      path: \"{env[DOCSEC_PROJECT_ROOT]}/lakehouse\"\n"
+        )
+        cfg = load_config(project_root=tmp_path)
+        assert cfg.readers["lake"].options["path"] == str(tmp_path / "lakehouse")
+
 
 class TestConfigImmutability:
     def test_config_is_frozen(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
         with pytest.raises((AttributeError, TypeError)):
-            cfg.project_root = tmp_path
+            setattr(cfg, "project_root", tmp_path)
 
     def test_spark_config_is_frozen(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
         with pytest.raises((AttributeError, TypeError)):
-            cfg.spark.confs = {}
+            setattr(cfg.spark, "confs", {})
 
     def test_readers_config_is_frozen(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
         with pytest.raises((AttributeError, TypeError)):
-            cfg.readers.entries = {}
+            setattr(cfg.readers, "entries", {})
 
 
 class TestSubConfigTypes:

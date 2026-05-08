@@ -1,41 +1,25 @@
 """Immutable root configuration dataclass for docsec."""
 
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from secure_semantic_docs.core.settings import BaseSettings
+from secure_semantic_docs.models.chunking_model import ChunkingConfig
 from secure_semantic_docs.models.reader_models import ReadersConfig
 from secure_semantic_docs.models.spark_models import IcebergConfig, SparkConfig
 from secure_semantic_docs.models.writer_models import WritersConfig
-
-
-def _project_root() -> Path:
-    """Resolve the project root directory.
-
-    Resolution order:
-    1. ``DOCSEC_PROJECT_ROOT`` environment variable.
-    2. ``SSD_PROJECT_ROOT`` environment variable (legacy alias).
-    3. Auto-detected as four levels above this file.
-    """
-    env_root = (
-            os.environ.get(BaseSettings.DOCSEC_PROJECT_ROOT)
-            or os.environ.get(BaseSettings.DOCSEC_PROJECT_ROOT_LEGACY)
-    )
-    if env_root:
-        return Path(env_root)
-    return Path(__file__).resolve().parent.parent.parent.parent
 
 
 @dataclass(frozen=True)
 class Config:
     """Immutable project-wide configuration assembled from YAML files."""
 
-    project_root: Path = field(default_factory=_project_root)
+    project_root: Path = field(default_factory=lambda: BaseSettings.project_root)
     spark: SparkConfig = field(default_factory=SparkConfig)
     iceberg: IcebergConfig = field(default_factory=IcebergConfig)
     readers: ReadersConfig = field(default_factory=ReadersConfig)
     writers: WritersConfig = field(default_factory=WritersConfig)
+    chunking: ChunkingConfig = field(default_factory=ChunkingConfig)
 
     @property
     def data_dir(self) -> Path:
