@@ -4,7 +4,10 @@
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 # Secure Semantic Docs
-Secure semantic document search pipeline built on PySpark
+
+A PySpark-based secure document ingestion and semantic search pipeline implementing a
+medallion lakehouse architecture (bronze / silver / gold) with sensitivity detection,
+permission metadata, and full provenance.
 
 ---
 
@@ -35,7 +38,7 @@ pip install -e ".[dev]"
 
 ## Configuration
 
-The pipeline is driven entirely by YAML files. Loading order (each layer overrides the previous):
+The pipeline is driven entirely by YAML. Loading order (each layer overrides the previous):
 
 | File                                                 | Description                             |
 |------------------------------------------------------|-----------------------------------------|
@@ -49,12 +52,10 @@ The pipeline is driven entirely by YAML files. Loading order (each layer overrid
 | Variable              | Description                                                           |
 |-----------------------|-----------------------------------------------------------------------|
 | `DOCSEC_PROJECT_ROOT` | Project root directory. Defaults to the repository root when not set. |
-| `DOCSEC_ENV`          | Set to `prod` to activate production config.                          |
-
-Export before running:
+| `DOCSEC_ENV`          | Set to `prod` to activate the production config layer.                |
 
 ```bash
-export DOCSEC_PROJECT_ROOT=/path/to/secure-semantic-docs
+export DOCSEC_PROJECT_ROOT=$(pwd)
 ```
 
 ### Local overrides
@@ -71,9 +72,25 @@ writers:
       path: "/data/lake/bronze_documents"
 ```
 
+### Chunking configuration
+
+Chunking parameters are set in `config.yml` and can be overridden locally:
+
+```yaml
+chunking:
+  chunk_size: 400
+  chunk_overlap: 80
+  default_top_k: 5
+  retrieval_candidate_multiplier: 4
+```
+
 ---
 
-## Running the bronze ingestion pipeline
+## Running the pipelines
+
+### Bronze ingestion
+
+Reads raw document text and metadata, joins them, and writes a Parquet table.
 
 ```bash
 export DOCSEC_PROJECT_ROOT=$(pwd)
@@ -81,13 +98,29 @@ export DOCSEC_PROJECT_ROOT=$(pwd)
 uv run python -m secure_semantic_docs.bronze_ingestion
 ```
 
-The pipeline steps are:
+Steps:
 
-1. Start a Spark session
-2. Load document metadata (JSON)
+1. Start a local Spark session
+2. Load document metadata (JSON Lines)
 3. Load raw document text files
 4. Join documents with metadata
-5. Write the bronze Parquet table to `$DOCSEC_PROJECT_ROOT/lakehouse/bronze_documents`
+5. Write bronze Parquet to `$DOCSEC_PROJECT_ROOT/lakehouse/bronze_documents`
+
+### Silver ingestion
+
+Reads bronze documents, cleans text, chunks each document, runs synthetic
+sensitivity detection on every chunk, and writes the silver Parquet table.
+
+```bash
+uv run python -m secure_semantic_docs.silver_ingestion
+```
+
+Steps:
+
+1. Read bronze Parquet
+2. Clean and chunk each document (word-boundary overlapping windows)
+3. Enrich chunks with sensitivity score, detected types, encryption flags
+4. Write silver Parquet to `$DOCSEC_PROJECT_ROOT/lakehouse/silver_chunks`
 
 ---
 
@@ -95,6 +128,12 @@ The pipeline steps are:
 
 ```bash
 uv run pytest tests/unit/ --cov=src --cov-report=term-missing
+```
+
+Run all tests including integration (requires a local Spark session, started automatically):
+
+```bash
+uv run pytest tests/ --cov=src --cov-report=term-missing
 ```
 
 ---
@@ -105,25 +144,39 @@ uv run pytest tests/unit/ --cov=src --cov-report=term-missing
 .
 ├── src/
 │   └── secure_semantic_docs/
-│       ├── core/                  Logging, settings, exceptions, Spark session factory
-│       ├── loader/                YAML config loader and builder
-│       ├── models/                Dataclasses for config, readers, writers, Spark/Iceberg
-│       ├── storage/               DDL-based schema loader
-│       ├── resources/             Bundled YAML configs and DDL schema files
-│       ├── ingestion/             PySpark readers and parsers (bronze layer)
-│       ├── processing/            Text cleaning, chunking, metadata enrichment, PII detection
-│       ├── embeddings/            SentenceTransformers model loading and embedding generation
-│       ├── vector_store/          Chroma client wrapper
-│       ├── lakehouse/             Iceberg read/write helpers (bronze / silver / gold)
-│       ├── governance/            OpenMetadata API client and lineage registration
-│       ├── security/              PyNaCl encryption/decryption utilities, permission enforcement
-│       ├── api/                   Serving layer (semantic search, role-based query endpoints)
-│       └── bronze_ingestion.py    Bronze pipeline entry point
+│       ├── core/               Settings, logging, Spark session factory,
+│       │                       sensitivity detection, project metadata
+│       ├── loader/             YAML config loader and builder
+│       ├── models/             Frozen dataclasses: Config, SparkConfig,
+│       │                       IcebergConfig, ChunkingConfig, readers, writers
+│       ├── processing/         Text cleaning, word-boundary chunking
+│       ├── storage/            DDL-based schema loader (bronze, silver)
+│       ├── io/                 SparkReader / SparkWriter abstractions
+│       ├── resources/          Bundled YAML configs, DDL files, synthetic data
+│       ├── bronze_ingestion.py Bronze pipeline entry point
+│       └── silver_ingestion.py Silver pipeline entry point
 ├── tests/
-│   └── unit/                      Fast, infrastructure-free unit tests
-├── docker/                        Dockerfiles and docker-compose files
+│   ├── unit/                   Fast, infrastructure-free unit tests
+│   └── integration/            Tests requiring a live SparkSession
+├── docker/                     Dockerfiles and docker-compose files
 └── pyproject.toml
 ```
+
+---
+
+## Sensitivity detection
+
+The silver pipeline tags every chunk with:
+
+| Field                        | Type      | Description                                           |
+|------------------------------|-----------|-------------------------------------------------------|
+| `sensitivity_score`          | `float`   | 0.0 (public) to 1.0 (restricted + many PII patterns)  |
+| `detected_sensitive_types`   | `list`    | e.g. `["email", "keyword:credential"]`                |
+| `requires_encryption`        | `boolean` | `true` when score >= 0.5                              |
+| `requires_restricted_access` | `boolean` | `true` when score >= 0.7                              |
+
+Detection is a demo-level simulation using compiled regex patterns and a keyword
+alternation regex. It is not a production PII engine.
 
 ---
 
@@ -133,4 +186,4 @@ MIT. See [LICENSE](LICENSE) for details.
 
 ---
 
-Secure Documents v0.1.0 — @author anthony_wainer
+Secure Documents v0.2.0 -- [AnthonyWainer](mailto:awainerc@gmail.com)
