@@ -1,29 +1,16 @@
 """Unit tests for core utilities: banner, execution, logging, and spark."""
 
 import logging
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from secure_semantic_docs.core.banner import print_banner
 from secure_semantic_docs.core.execution import ingest_log_execution
 from secure_semantic_docs.core.logging import configure_logging
+from secure_semantic_docs.core.project_metadata import load_project_metadata
 from secure_semantic_docs.core.spark import build_spark_session
 from secure_semantic_docs.loader import Config
 from secure_semantic_docs.models.spark_models import IcebergConfig, SparkConfig
-
-
-class TestPrintBanner:
-    def test_outputs_project_name(self, capsys):
-        print_banner()
-        out = capsys.readouterr().out
-        assert "Secure Documents" in out
-
-    def test_outputs_author(self, capsys):
-        print_banner()
-        out = capsys.readouterr().out
-        assert "anthony_wainer" in out
 
 
 class TestIngestLogExecution:
@@ -65,6 +52,12 @@ class TestIngestLogExecution:
 
 
 class TestConfigureLogging:
+    @staticmethod
+    def setup_method():
+        from secure_semantic_docs.core.logging import reset_banner
+
+        reset_banner()
+
     def test_default_ini_configures_logging(self):
         configure_logging()
         assert logging.getLogger("DocSecPipeline") is not None
@@ -83,12 +76,36 @@ class TestConfigureLogging:
         configure_logging(ini_path=ini)
         assert logging.getLogger().level == logging.DEBUG
 
+    def test_banner_logged_once_for_app_logger(self):
+        with (
+            patch("secure_semantic_docs.core.logging.build_banner", return_value="banner"),
+            patch("secure_semantic_docs.core.logging.logging.getLogger") as mock_get_logger
+        ):
+            logger = MagicMock()
+            mock_get_logger.return_value = logger
+
+            configure_logging()
+            configure_logging()
+
+        logger.info.assert_called_once_with("\n%s", "banner")
+
+
+class TestProjectMetadata:
+    def test_load_project_metadata_reads_pyproject(self):
+        metadata = load_project_metadata()
+
+        assert metadata.name == "secure-semantic-docs"
+        assert metadata.version == "0.1.0"
+        assert metadata.author == "AnthonyWainer"
+
 
 class TestBuildSparkSessionUnit:
-    def _cfg(self, tmp_path, **kwargs) -> Config:
-        return Config(project_root=tmp_path, **kwargs)
+    @staticmethod
+    def _cfg(tmp_path, **kwargs) -> Config:
+        return Config(project_root=tmp_path, **kwargs)  # type: ignore[misc]
 
-    def _patches(self):
+    @staticmethod
+    def _patches():
         return (
             patch("secure_semantic_docs.core.spark.SparkSession"),
             patch("secure_semantic_docs.core.spark.SparkConf")
@@ -97,8 +114,10 @@ class TestBuildSparkSessionUnit:
     def test_no_config_calls_load_config(self, tmp_path, monkeypatch):
         monkeypatch.setenv("DOCSEC_PROJECT_ROOT", str(tmp_path))
         mock_session = MagicMock()
-        with patch("secure_semantic_docs.core.spark.SparkSession") as ms, \
-                patch("secure_semantic_docs.core.spark.SparkConf"):
+        with (
+            patch("secure_semantic_docs.core.spark.SparkSession") as ms,
+            patch("secure_semantic_docs.core.spark.SparkConf")
+        ):
             ms.getActiveSession.return_value = None
             ms.builder.config.return_value.getOrCreate.return_value = mock_session
             result = build_spark_session()
@@ -106,8 +125,10 @@ class TestBuildSparkSessionUnit:
 
     def test_managed_true_sets_empty_confs(self, tmp_path):
         cfg = self._cfg(tmp_path, spark=SparkConfig(managed=True))
-        with patch("secure_semantic_docs.core.spark.SparkSession") as ms, \
-                patch("secure_semantic_docs.core.spark.SparkConf") as mc:
+        with (
+            patch("secure_semantic_docs.core.spark.SparkSession") as ms,
+            patch("secure_semantic_docs.core.spark.SparkConf") as mc
+        ):
             ms.getActiveSession.return_value = None
             ms.builder.config.return_value.getOrCreate.return_value = MagicMock()
             build_spark_session(cfg)
@@ -124,8 +145,10 @@ class TestBuildSparkSessionUnit:
                 warehouse="/tmp/wh"
             )
         )
-        with patch("secure_semantic_docs.core.spark.SparkSession") as ms, \
-                patch("secure_semantic_docs.core.spark.SparkConf") as mc:
+        with (
+            patch("secure_semantic_docs.core.spark.SparkSession") as ms,
+            patch("secure_semantic_docs.core.spark.SparkConf") as mc
+        ):
             ms.getActiveSession.return_value = None
             ms.builder.config.return_value.getOrCreate.return_value = MagicMock()
             build_spark_session(cfg)
@@ -135,8 +158,10 @@ class TestBuildSparkSessionUnit:
     def test_session_log_level_set(self, tmp_path):
         cfg = self._cfg(tmp_path)
         mock_session = MagicMock()
-        with patch("secure_semantic_docs.core.spark.SparkSession") as ms, \
-                patch("secure_semantic_docs.core.spark.SparkConf"):
+        with (
+            patch("secure_semantic_docs.core.spark.SparkSession") as ms,
+            patch("secure_semantic_docs.core.spark.SparkConf")
+        ):
             ms.getActiveSession.return_value = None
             ms.builder.config.return_value.getOrCreate.return_value = mock_session
             build_spark_session(cfg)

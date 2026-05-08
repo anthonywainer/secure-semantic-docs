@@ -6,7 +6,21 @@ import logging
 import logging.config
 from pathlib import Path
 
-_LOGGING_INI = Path(__file__).resolve().parent.parent / "resources" / "logging.ini"
+from secure_semantic_docs.core.banner import build_banner
+from secure_semantic_docs.core.settings import BaseSettings
+
+_BANNER_EMITTED = False
+
+
+def _emit_startup_banner() -> None:
+    """Log the startup banner once through the application logger."""
+    global _BANNER_EMITTED
+    if _BANNER_EMITTED:
+        return
+
+    logger = logging.getLogger(BaseSettings.APP_NAME)
+    logger.info("\n%s", build_banner())
+    _BANNER_EMITTED = True
 
 
 def configure_logging(ini_path: Path | None = None) -> None:
@@ -18,10 +32,17 @@ def configure_logging(ini_path: Path | None = None) -> None:
         Path to a ``logging.ini`` file.  Defaults to the bundled
         ``resources/logging.ini`` when *None*.
     """
-    path = ini_path or _LOGGING_INI
+    path: Path = ini_path or (BaseSettings.resources_dir / "logging.ini")
     logging.config.fileConfig(path, disable_existing_loggers=False)
+    _emit_startup_banner()
 
 
 def get_logger(name: str) -> logging.Logger:
     """Return a named logger."""
     return logging.getLogger(name)
+
+
+def reset_banner() -> None:
+    """Reset the banner-emitted flag. Intended for use in tests only."""
+    global _BANNER_EMITTED
+    _BANNER_EMITTED = False

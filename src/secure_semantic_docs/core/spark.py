@@ -66,7 +66,7 @@ def build_spark_session(config: Config | None = None) -> SparkSession:
         confs = list(cfg.spark.confs.items())
 
     if cfg.iceberg.enabled:
-        confs += _iceberg_confs(cfg.iceberg)
+        confs += iceberg_confs(cfg.iceberg)
         logger.info(
             "Iceberg enabled -- catalog=%s type=%s warehouse=%s",
             cfg.iceberg.catalog_name,
@@ -76,7 +76,7 @@ def build_spark_session(config: Config | None = None) -> SparkSession:
     else:
         logger.debug("Iceberg disabled -- using Parquet lakehouse")
 
-    spark_conf = SparkConf().setAll(_merge_configurations(confs))
+    spark_conf = SparkConf().setAll(merge_configurations(confs))
     session = SparkSession.builder.config(conf=spark_conf).getOrCreate()
     session.sparkContext.setLogLevel(cfg.spark.log_level)
     logger.info(
@@ -87,7 +87,7 @@ def build_spark_session(config: Config | None = None) -> SparkSession:
     return session
 
 
-def _iceberg_confs(ic: IcebergConfig) -> list[tuple[str, str]]:
+def iceberg_confs(ic: IcebergConfig) -> list[tuple[str, str]]:
     """Return Iceberg catalog ``(key, value)`` tuples from *ic*."""
     cat = ic.catalog_name
     confs: list[tuple[str, str]] = [
@@ -104,7 +104,7 @@ def _iceberg_confs(ic: IcebergConfig) -> list[tuple[str, str]]:
     return confs
 
 
-def _merge_configurations(
+def merge_configurations(
         configurations: Iterable[tuple[str, str]]
 ) -> list[tuple[str, str]]:
     """Merge duplicate keys by concatenating values with commas.

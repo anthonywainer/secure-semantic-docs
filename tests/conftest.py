@@ -1,8 +1,14 @@
 """Shared pytest fixtures for secure-semantic-docs test suite."""
 
+import os
+import sys
+
 import pytest
 
 from secure_semantic_docs.loader import Config
+
+os.environ.setdefault("PYSPARK_PYTHON", sys.executable)
+os.environ.setdefault("PYSPARK_DRIVER_PYTHON", sys.executable)
 
 
 @pytest.fixture(scope="session")

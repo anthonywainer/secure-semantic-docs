@@ -28,7 +28,14 @@ readers:
     options:
       format: parquet
       mergeSchema: "true"
-      path: "{env[DOCSEC_PROJECT_ROOT]}/lakehouse/bronze_documents"
+      path: "{project_root}/lakehouse/bronze_documents"
+
+  silver_chunks:
+    stream: false
+    options:
+      format: parquet
+      mergeSchema: "true"
+      path: "{project_root}/lakehouse/silver_chunks"
 
   metadata_documents:
     stream: false
@@ -51,4 +58,18 @@ writers:
       format: parquet
       mode: overwrite
       compression: snappy
-      path: "{env[DOCSEC_PROJECT_ROOT]}/lakehouse/bronze_documents"
+      path: "{project_root}/lakehouse/bronze_documents"
+
+  silver_chunks:
+    stream: false
+    options:
+      format: parquet
+      mode: overwrite
+      compression: snappy
+      path: "{project_root}/lakehouse/silver_chunks"
+
+chunking:
+  chunk_size: 400
+  chunk_overlap: 80
+  default_top_k: 5
+  retrieval_candidate_multiplier: 4

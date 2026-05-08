@@ -11,12 +11,14 @@ from secure_semantic_docs.loader import Config, load_config
 from secure_semantic_docs.storage import load_schema
 
 
-def _cast_field(f, ingestion_ts: str):
-    if f.name == "raw_text":
-        return coalesce(col("raw_text"), lit("")).cast(f.dataType).alias("raw_text")
-    if f.name == "ingestion_timestamp":
-        return lit(ingestion_ts).cast(f.dataType).alias("ingestion_timestamp")
-    return col(f.name).cast(f.dataType)
+@ingest_log_execution
+def main() -> None:
+    """Entry point: configure logging, build Spark, then run :func:`ingest`."""
+    logging.getLogger("py4j").setLevel(logging.ERROR)
+    configure_logging()
+    config = load_config()
+    spark = build_spark_session(config)
+    ingest(spark, config)
 
 
 def ingest(spark: SparkSession, cfg: Config | None = None) -> None:
@@ -72,14 +74,12 @@ def ingest(spark: SparkSession, cfg: Config | None = None) -> None:
     logger.info("Bronze write complete")
 
 
-@ingest_log_execution
-def main() -> None:
-    """Entry point: configure logging, build Spark, then run :func:`ingest`."""
-    logging.getLogger("py4j").setLevel(logging.ERROR)
-    configure_logging()
-    config = load_config()
-    spark = build_spark_session(config)
-    ingest(spark, config)
+def _cast_field(f, ingestion_ts: str):
+    if f.name == "raw_text":
+        return coalesce(col("raw_text"), lit("")).cast(f.dataType).alias("raw_text")
+    if f.name == "ingestion_timestamp":
+        return lit(ingestion_ts).cast(f.dataType).alias("ingestion_timestamp")
+    return col(f.name).cast(f.dataType)
 
 
 if __name__ == "__main__":  # pragma: no cover
