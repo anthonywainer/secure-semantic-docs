@@ -5,6 +5,7 @@ from pathlib import Path
 
 from secure_semantic_docs.core.settings import BaseSettings
 from secure_semantic_docs.models.chunking_model import ChunkingConfig
+from secure_semantic_docs.models.embedding_model import EmbeddingConfig
 from secure_semantic_docs.models.reader_models import ReadersConfig
 from secure_semantic_docs.models.spark_models import IcebergConfig, SparkConfig
 from secure_semantic_docs.models.writer_models import WritersConfig
@@ -20,6 +21,7 @@ class Config:
     readers: ReadersConfig = field(default_factory=ReadersConfig)
     writers: WritersConfig = field(default_factory=WritersConfig)
     chunking: ChunkingConfig = field(default_factory=ChunkingConfig)
+    embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
 
     @property
     def data_dir(self) -> Path:

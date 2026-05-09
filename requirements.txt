@@ -4,3 +4,4 @@
 #   pip install -r requirements.txt
 pyspark==4.1.1
 PyYAML==6.0.3
+sentence-transformers==5.4.1

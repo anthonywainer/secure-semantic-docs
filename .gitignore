@@ -202,10 +202,8 @@ temp/
 .local/
 lakehouse/
 vector_store/chroma/
-logs/
 
 # Project-specific generated outputs
 !logs/
 logs/*.jsonl
 !logs/.gitkeep
-
