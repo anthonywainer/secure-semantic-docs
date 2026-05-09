@@ -31,8 +31,9 @@ from pathlib import Path
 from secure_semantic_docs.core.logging import get_logger
 from secure_semantic_docs.core.settings import BaseSettings
 from secure_semantic_docs.loader.yaml_utils import deep_merge, load_yaml_file
-from secure_semantic_docs.models.config_model import Config
 from secure_semantic_docs.models.chunking_model import ChunkingConfig
+from secure_semantic_docs.models.config_model import Config
+from secure_semantic_docs.models.embedding_model import EmbeddingConfig
 from secure_semantic_docs.models.reader_models import ReaderEntry, ReadersConfig
 from secure_semantic_docs.models.spark_models import IcebergConfig, SparkConfig
 from secure_semantic_docs.models.writer_models import WriterEntry, WritersConfig
@@ -159,7 +160,8 @@ def load_config(project_root: Path | None = None) -> Config:
         iceberg=IcebergConfig(**raw["iceberg"]),
         readers=_build_readers(raw.get("readers") or {}, project_root),
         writers=_build_writers(raw.get("writers") or {}, project_root),
-        chunking=ChunkingConfig(**raw.get("chunking") or {})
+        chunking=ChunkingConfig(**raw.get("chunking") or {}),
+        embedding=EmbeddingConfig(**raw.get("embedding") or {})
     )
 
     logger.info(

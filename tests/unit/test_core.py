@@ -95,7 +95,7 @@ class TestProjectMetadata:
         metadata = load_project_metadata()
 
         assert metadata.name == "secure-semantic-docs"
-        assert metadata.version == "0.1.0"
+        assert metadata.version == "0.3.0"
         assert metadata.author == "AnthonyWainer"
 
 
