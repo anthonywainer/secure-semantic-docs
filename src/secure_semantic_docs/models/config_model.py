@@ -22,6 +22,7 @@ class Config:
     writers: WritersConfig = field(default_factory=WritersConfig)
     chunking: ChunkingConfig = field(default_factory=ChunkingConfig)
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
+    secret_key_env_var: str = "DOCSEC_SECRET_KEY"
 
     @property
     def data_dir(self) -> Path:

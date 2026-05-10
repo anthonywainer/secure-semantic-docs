@@ -1,4 +1,4 @@
-"""Unit tests for the embeddings package and gold ingestion pipeline."""
+"""Unit tests for the embeddings package and embedding ingestion."""
 
 import logging
 import os
@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+from pyspark.sql import Row
+from pyspark.sql.types import StructField, StructType
 
 from secure_semantic_docs.core.exceptions import EmbeddingError
 from secure_semantic_docs.embeddings.model_loader import resolve_device
@@ -74,8 +76,8 @@ class TestWorkerSafeDevice:
 class TestResolveEmbeddingPartitions:
     @staticmethod
     def _call(total_executor_cores: int, configured: int, is_local_mode: bool) -> int:
-        from secure_semantic_docs.embeddings.chunk_embedder import _resolve_embedding_partitions  # noqa: PLC2701
-        return _resolve_embedding_partitions(total_executor_cores, configured, is_local_mode)
+        from secure_semantic_docs.core.spark_partitions import compute_partition_count
+        return compute_partition_count(total_executor_cores, configured, is_local_mode)
 
     def test_local_mode_always_returns_one(self):
         assert self._call(total_executor_cores=16, configured=0, is_local_mode=True) == 1
@@ -189,15 +191,16 @@ def _make_rows(*texts: str):
         row.asDict.return_value = {
             "chunk_id": f"c{idx}",
             "document_id": "doc-1",
-            "chunk_text": text,
+            "chunk_span": Row(start=0, end=len(text.split())),
             "classification": "public",
             "allowed_roles": ["reader"],
             "owner": "alice",
             "department": "eng",
             "sensitivity_score": 0.1,
-            "source_path": "/path",
+            "source_path": text,
             "version": "1",
-            "document_hash": "abc"
+            "document_hash": "abc",
+            "chunk_text": text
         }
         return row
 
@@ -216,6 +219,8 @@ def _mock_model(dim: int = 4) -> MagicMock:
 
 
 class TestEmbedPartition:
+    _TEST_KEY: bytes = b"\xab" * 32  # deterministic 32-byte key for tests
+
     @staticmethod
     def _call(
             rows: Iterator,
@@ -223,26 +228,25 @@ class TestEmbedPartition:
             device: str = "cpu",
             batch_size: int = 32,
             normalize: bool = True,
-            created_at: str = "2024-01-01T00:00:00Z"
+            created_at: str = "2024-01-01T00:00:00Z",
+            encryption_key: bytes = b"\xab" * 32,
+            key_id: str = "test-key-id",
+            embedding_dim: int = 4,
+            embedding_dtype: str = "float32",
+            raw_docs_dir: str = "unused"
     ) -> list:
-        from secure_semantic_docs.embeddings.chunk_embedder import embed_partition
-        return list(embed_partition(rows, model_name, device, batch_size, normalize, created_at))
-
-    @staticmethod
-    def _patch_infra(mock_model):
-        """Patch worker_env and model_loader so no real I/O happens."""
-        return (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch(
-                "secure_semantic_docs.embeddings.chunk_embedder.load_cached_model",
-                return_value=mock_model
-            )
-        )
+        from secure_semantic_docs.embeddings.row_encoder import encode_and_encrypt_partition
+        return list(encode_and_encrypt_partition(
+            rows, model_name, device, batch_size, normalize,
+            created_at, encryption_key, key_id, embedding_dim, embedding_dtype, raw_docs_dir
+        ))
 
     def test_empty_partition_yields_nothing(self):
         with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model", return_value=_mock_model())
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=_mock_model()),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
         ):
             result = self._call(iter([]))
         assert result == []
@@ -250,74 +254,146 @@ class TestEmbedPartition:
     def test_returns_one_tuple_per_row(self):
         mock_model = _mock_model(dim=4)
         with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model", return_value=mock_model)
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
         ):
             result = self._call(_make_rows("hello", "world"))
         assert len(result) == 2
 
+    def test_tuple_embedding_id_is_uuid_string(self):
+        import re
+        uuid_re = re.compile(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        )
+        mock_model = _mock_model(dim=4)
+        with (
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
+        ):
+            result = self._call(_make_rows("hello"))
+        assert uuid_re.match(result[0][0])
+
     def test_tuple_has_correct_chunk_id(self):
         mock_model = _mock_model(dim=4)
         with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model", return_value=mock_model)
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
         ):
             result = self._call(_make_rows("hello"))
-        assert result[0][0] == "c0"
+        assert result[0][1] == "c0"
 
-    def test_tuple_has_embedding_list(self):
+    def test_ciphertext_is_bytes(self):
         mock_model = _mock_model(dim=4)
         with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model", return_value=mock_model)
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
         ):
             result = self._call(_make_rows("hello"))
-        embedding = result[0][2]
-        assert isinstance(embedding, list)
-        assert len(embedding) == 4
+        ciphertext = result[0][3]
+        assert isinstance(ciphertext, bytes)
+        assert len(ciphertext) > 0
+
+    def test_nonce_is_24_bytes(self):
+        mock_model = _mock_model(dim=4)
+        with (
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
+        ):
+            result = self._call(_make_rows("hello"))
+        nonce = result[0][4]
+        assert isinstance(nonce, bytes)
+        assert len(nonce) == 24
+
+    def test_algorithm_label_correct(self):
+        mock_model = _mock_model(dim=4)
+        with (
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
+        ):
+            result = self._call(_make_rows("hello"))
+        assert result[0][5] == "XSalsa20-Poly1305"
+
+    def test_embedding_dim_stored(self):
+        mock_model = _mock_model(dim=4)
+        with (
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
+        ):
+            result = self._call(_make_rows("hello"), embedding_dim=4)
+        assert result[0][6] == 4
 
     def test_model_name_stamped_on_row(self):
         mock_model = _mock_model(dim=4)
         with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model", return_value=mock_model)
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
         ):
             result = self._call(_make_rows("hello"), model_name="my-model")
-        assert result[0][3] == "my-model"
+        assert result[0][8] == "my-model"
+
+    def test_key_id_stamped_on_row(self):
+        mock_model = _mock_model(dim=4)
+        with (
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
+        ):
+            result = self._call(_make_rows("hello"), key_id="my-key-id")
+        assert result[0][9] == "my-key-id"
 
     def test_created_at_stamped_on_row(self):
         mock_model = _mock_model(dim=4)
         ts = "2024-06-01T12:00:00Z"
         with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model", return_value=mock_model)
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
         ):
             result = self._call(_make_rows("hello"), created_at=ts)
-        assert result[0][4] == ts
+        assert result[0][17] == ts
 
-    def test_sensitivity_score_coerced_to_float(self):
+    def test_ciphertext_decryptable(self):
+        from secure_semantic_docs.embeddings.serializer import bytes_to_embedding
+        from secure_semantic_docs.security.keyring_store import generate_secret_key
+        from secure_semantic_docs.security.secretbox_decryptor import secretbox_decrypt
+        key = generate_secret_key()
         mock_model = _mock_model(dim=4)
-        row = MagicMock()
-        row.asDict.return_value = {
-            "chunk_id": "c0",
-            "document_id": "doc-1",
-            "chunk_text": "text",
-            "sensitivity_score": None
-        }
         with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model", return_value=mock_model)
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
         ):
-            result = self._call(iter([row]))
-        assert isinstance(result[0][9], float)
-        assert result[0][9] == 0.0
+            result = self._call(_make_rows("hello"), encryption_key=key, embedding_dim=4)
+        ciphertext, nonce = result[0][3], result[0][4]
+        raw = secretbox_decrypt(ciphertext, nonce, key)
+        arr = bytes_to_embedding(raw, dim=4)
+        assert arr.shape == (4,)
 
     def test_encode_failure_raises_embedding_error(self):
         failing_model = MagicMock()
         failing_model.encode.side_effect = RuntimeError("GPU OOM")
         with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model", return_value=failing_model)
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=failing_model)
         ):
             with pytest.raises(EmbeddingError, match="Batch encode failed"):
                 self._call(_make_rows("hello"))
@@ -325,168 +401,364 @@ class TestEmbedPartition:
     def test_calls_encode_once_for_full_partition(self):
         mock_model = _mock_model(dim=4)
         with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model", return_value=mock_model)
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch("secure_semantic_docs.processing.document_reader.read_document_words",
+                  side_effect=lambda source_path, raw_docs_dir: source_path.split())
         ):
             self._call(_make_rows("a", "b", "c"))
         assert mock_model.encode.call_count == 1
         _, kwargs = mock_model.encode.call_args
         assert kwargs.get("batch_size") == 32
 
+    def test_encodes_transient_chunk_text_without_source_read(self):
+        mock_model = _mock_model(dim=4)
+        with (
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model", return_value=mock_model),
+            patch(
+                "secure_semantic_docs.processing.chunk_texts.read_document_words",
+                side_effect=AssertionError("source document should not be read")
+            )
+        ):
+            self._call(_make_rows("transient text"))
+
+        texts, _ = mock_model.encode.call_args
+        assert texts == (["transient text"],)
+
+
+class TestChunkTexts:
+    def test_uses_transient_chunk_text(self):
+        from secure_semantic_docs.processing.chunk_texts import chunk_texts
+
+        rows = [{"chunk_text": "cached text", "source_path": "doc.txt"}]
+        with patch(
+                "secure_semantic_docs.processing.chunk_texts.read_document_words",
+                side_effect=AssertionError("source document should not be read")
+        ):
+            assert chunk_texts(rows, "unused") == ["cached text"]
+
+    def test_reconstructs_text_from_source_span(self):
+        from secure_semantic_docs.processing.chunk_texts import chunk_texts
+
+        rows = [
+            {
+                "chunk_span": Row(start=1, end=4),
+                "source_path": "doc.txt"
+            }
+        ]
+        with patch(
+                "secure_semantic_docs.processing.chunk_texts.read_document_words",
+                return_value=["zero", "one", "two", "three", "four"]
+        ) as mock_reader:
+            assert chunk_texts(rows, "/raw") == ["one two three"]
+
+        mock_reader.assert_called_once_with("doc.txt", "/raw")
+
+    def test_reuses_source_words_for_same_document(self):
+        from secure_semantic_docs.processing.chunk_texts import chunk_texts
+
+        rows = [
+            {"chunk_span": Row(start=0, end=2), "source_path": "doc.txt"},
+            {"chunk_span": Row(start=2, end=4), "source_path": "doc.txt"}
+        ]
+        with patch(
+                "secure_semantic_docs.processing.chunk_texts.read_document_words",
+                return_value=["zero", "one", "two", "three"]
+        ) as mock_reader:
+            assert chunk_texts(rows, "/raw") == ["zero one", "two three"]
+
+        mock_reader.assert_called_once_with("doc.txt", "/raw")
+
+    def test_missing_span_reads_empty_slice(self):
+        from secure_semantic_docs.processing.chunk_texts import chunk_texts
+
+        rows = [{"source_path": "doc.txt"}]
+        with patch(
+                "secure_semantic_docs.processing.chunk_texts.read_document_words",
+                return_value=["zero", "one"]
+        ) as mock_reader:
+            assert chunk_texts(rows, "/raw") == [""]
+
+        mock_reader.assert_called_once_with("doc.txt", "/raw")
+
 
 class TestGenerateEmbeddings:
     @staticmethod
-    def _silver_df(spark, include_null_row: bool = False):
-        from pyspark.sql.types import (
-            ArrayType,
-            FloatType,
-            StringType,
-            StructField,
-            StructType
-        )
-        schema = StructType([
-            StructField("chunk_id", StringType()),
-            StructField("document_id", StringType()),
-            StructField("chunk_text", StringType()),
-            StructField("classification", StringType()),
-            StructField("allowed_roles", ArrayType(StringType())),
-            StructField("owner", StringType()),
-            StructField("department", StringType()),
-            StructField("sensitivity_score", FloatType()),
-            StructField("source_path", StringType()),
-            StructField("version", StringType()),
-            StructField("document_hash", StringType())
-        ])
-        data: list[tuple[str, str, str | None, str, list[str], str, str, float, str, str, str]] = [
-            ("c1", "doc-1", "hello world", "public", ["reader"], "alice", "eng", 0.1, "/p", "1", "h")
-        ]
-        if include_null_row:
-            data.append(("c2", "doc-1", None, "public", ["reader"], "alice", "eng", 0.1, "/p", "1", "h"))
-        return spark.createDataFrame(data, schema=schema)
+    def _setup_raw_doc(tmp_path, filename: str = "doc-1.txt", text: str = "hello world") -> str:
+        raw_docs_dir = tmp_path / "synthetic_data" / "raw_documents"
+        raw_docs_dir.mkdir(parents=True, exist_ok=True)
+        (raw_docs_dir / filename).write_text(text, encoding="utf-8")
+        return filename
 
     @staticmethod
-    def _patch_infra(dim: int = 384):
-        return (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch(
-                "secure_semantic_docs.embeddings.chunk_embedder.load_cached_model",
-                return_value=_mock_model(dim=dim)
-            )
+    def _chunks_df(spark, source_path: str, include_null_row: bool = False):
+        from pyspark.sql.types import StructType
+
+        schema = StructType.fromDDL(
+            "chunk_id string, document_id string, chunk_span struct<start:int,end:int>, "
+            "classification string, allowed_roles array<string>, owner string, "
+            "department string, sensitivity_score float, source_path string, "
+            "version string, document_hash string"
+        )
+        data: list[tuple[
+            str,
+            str,
+            Row | None,
+            str,
+            list[str],
+            str,
+            str,
+            float,
+            str,
+            str,
+            str
+        ]] = [
+            ("c1", "doc-1", Row(start=0, end=2), "public", ["reader"], "alice", "eng", 0.1, source_path, "1", "h")
+        ]
+        if include_null_row:
+            data.append(("c2", "doc-1", None, "public", ["reader"], "alice", "eng", 0.1, source_path, "1", "h"))
+        return spark.createDataFrame(data, schema=schema)
+
+    def test_returns_dataframe_with_embedding_schema(self, spark, tmp_path):
+        from secure_semantic_docs.embeddings.core import generate_embeddings
+        from secure_semantic_docs.models import Config, EmbeddingConfig
+        from secure_semantic_docs.security.keyring_store import generate_secret_key
+
+        test_key = generate_secret_key()
+        source_path = self._setup_raw_doc(tmp_path)
+        cfg = Config(project_root=tmp_path,
+                     embedding=EmbeddingConfig(model="all-MiniLM-L6-v2", device="cpu", num_partitions=1))
+        chunks_df = self._chunks_df(spark, source_path)
+
+        with (
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model",
+                  return_value=_mock_model(dim=384)),
+            patch("secure_semantic_docs.models.embedding_model.resolve_key_material",
+                  return_value=(test_key, "test-key-id"))
+        ):
+            embeddings_df = generate_embeddings(spark, chunks_df, cfg)
+
+        field_names = {f.name for f in embeddings_df.schema}
+        assert {
+                   "embedding_id", "chunk_id", "document_id",
+                   "embedding_ciphertext", "embedding_nonce", "embedding_model", "created_at"
+               } <= field_names
+
+    def test_output_row_count_matches_input(self, spark, tmp_path):
+        from secure_semantic_docs.embeddings.core import generate_embeddings
+        from secure_semantic_docs.models import Config, EmbeddingConfig
+        from secure_semantic_docs.security.keyring_store import generate_secret_key
+
+        test_key = generate_secret_key()
+        source_path = self._setup_raw_doc(tmp_path)
+        cfg = Config(project_root=tmp_path, embedding=EmbeddingConfig(device="cpu", num_partitions=1))
+        chunks_df = self._chunks_df(spark, source_path)
+
+        with (
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model",
+                  return_value=_mock_model(dim=384)),
+            patch("secure_semantic_docs.models.embedding_model.resolve_key_material",
+                  return_value=(test_key, "test-key-id"))
+        ):
+            embeddings_df = generate_embeddings(spark, chunks_df, cfg)
+
+        assert embeddings_df.count() == chunks_df.count()
+
+    def test_null_chunk_span_rows_are_dropped(self, spark, tmp_path):
+        from secure_semantic_docs.embeddings.core import generate_embeddings
+        from secure_semantic_docs.models import Config, EmbeddingConfig
+        from secure_semantic_docs.security.keyring_store import generate_secret_key
+
+        test_key = generate_secret_key()
+        source_path = self._setup_raw_doc(tmp_path)
+        cfg = Config(project_root=tmp_path, embedding=EmbeddingConfig(device="cpu", num_partitions=1))
+        chunks_df = self._chunks_df(spark, source_path, include_null_row=True)
+        assert chunks_df.count() == 2
+
+        with (
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model",
+                  return_value=_mock_model(dim=384)),
+            patch("secure_semantic_docs.models.embedding_model.resolve_key_material",
+                  return_value=(test_key, "test-key-id"))
+        ):
+            embeddings_df = generate_embeddings(spark, chunks_df, cfg)
+
+        assert embeddings_df.count() == 1
+
+    def test_uses_default_parallelism_when_num_partitions_zero(self, spark, tmp_path):
+        from secure_semantic_docs.embeddings.core import generate_embeddings
+        from secure_semantic_docs.models import Config, EmbeddingConfig
+        from secure_semantic_docs.security.keyring_store import generate_secret_key
+
+        test_key = generate_secret_key()
+        source_path = self._setup_raw_doc(tmp_path)
+        cfg = Config(project_root=tmp_path, embedding=EmbeddingConfig(device="cpu", num_partitions=0))
+        chunks_df = self._chunks_df(spark, source_path)
+
+        with (
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model",
+                  return_value=_mock_model(dim=384)),
+            patch("secure_semantic_docs.models.embedding_model.resolve_key_material",
+                  return_value=(test_key, "test-key-id"))
+        ):
+            embeddings_df = generate_embeddings(spark, chunks_df, cfg)
+
+        assert embeddings_df.count() == 1
+
+    def test_loads_config_when_none_passed(self, spark, tmp_path):
+        from secure_semantic_docs.embeddings.core import generate_embeddings
+        from secure_semantic_docs.models import Config, EmbeddingConfig
+        from secure_semantic_docs.security.keyring_store import generate_secret_key
+
+        test_key = generate_secret_key()
+        source_path = self._setup_raw_doc(tmp_path)
+        mock_cfg = Config(project_root=tmp_path, embedding=EmbeddingConfig(device="cpu", num_partitions=1))
+        chunks_df = self._chunks_df(spark, source_path)
+
+        with (
+            patch("secure_semantic_docs.embeddings.core.load_config", return_value=mock_cfg),
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model",
+                  return_value=_mock_model(dim=384)),
+            patch("secure_semantic_docs.models.embedding_model.resolve_key_material",
+                  return_value=(test_key, "test-key-id"))
+        ):
+            embeddings_df = generate_embeddings(spark, chunks_df, config=None)
+
+        assert embeddings_df.count() == 1
+
+
+class TestResolveEmbeddingSettings:
+    @staticmethod
+    def _spark(master: str = "local[*]", default_parallelism: int = 4):
+        mock_spark = MagicMock()
+        mock_spark.sparkContext.master = master
+        mock_spark.sparkContext.defaultParallelism = default_parallelism
+        return mock_spark
+
+    def test_uses_raw_documents_reader_path(self, tmp_path):
+        from secure_semantic_docs.models import Config, EmbeddingConfig, ReaderEntry, ReadersConfig
+        from secure_semantic_docs.models.embedding_model import resolve_embedding_settings
+
+        config = Config(
+            project_root=tmp_path,
+            readers=ReadersConfig(entries={
+                "raw_documents": ReaderEntry(options={"path": "/configured/raw"})
+            }),
+            embedding=EmbeddingConfig(device="cpu", num_partitions=3)
         )
 
-    def test_returns_dataframe_with_gold_schema(self, spark):
-        from secure_semantic_docs.embeddings.chunk_embedder import generate_embeddings
-        from secure_semantic_docs.models import Config, EmbeddingConfig
-
-        cfg = Config(embedding=EmbeddingConfig(model="all-MiniLM-L6-v2", device="cpu", num_partitions=1))
-        silver_df = self._silver_df(spark)
-
-        with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model",
-                  return_value=_mock_model(dim=384))
+        with patch(
+                "secure_semantic_docs.models.embedding_model.resolve_key_material",
+                return_value=(b"\x01" * 32, "key-1")
         ):
-            gold_df = generate_embeddings(spark, silver_df, cfg)
+            settings = resolve_embedding_settings(
+                self._spark(master="spark://cluster", default_parallelism=8),
+                config
+            )
 
-        field_names = {f.name for f in gold_df.schema}
-        assert {"chunk_id", "document_id", "embedding", "embedding_model", "embedding_created_at"} <= field_names
+        assert settings.raw_docs_dir == "/configured/raw"
+        assert settings.num_partitions == 3
+        assert settings.is_local_mode is False
+        assert settings.key_id == "key-1"
 
-    def test_output_row_count_matches_input(self, spark):
-        from secure_semantic_docs.embeddings.chunk_embedder import generate_embeddings
+    def test_falls_back_to_config_raw_documents_dir_without_reader(self, tmp_path):
         from secure_semantic_docs.models import Config, EmbeddingConfig
+        from secure_semantic_docs.models.embedding_model import resolve_embedding_settings
 
-        cfg = Config(embedding=EmbeddingConfig(device="cpu", num_partitions=1))
-        silver_df = self._silver_df(spark)
+        config = Config(
+            project_root=tmp_path,
+            embedding=EmbeddingConfig(device="cpu", num_partitions=0)
+        )
 
-        with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model",
-                  return_value=_mock_model(dim=384))
+        with patch(
+                "secure_semantic_docs.models.embedding_model.resolve_key_material",
+                return_value=(b"\x02" * 32, "key-2")
         ):
-            gold_df = generate_embeddings(spark, silver_df, cfg)
+            settings = resolve_embedding_settings(self._spark(), config)
 
-        assert gold_df.count() == silver_df.count()
+        assert settings.raw_docs_dir == str(config.raw_documents_dir)
+        assert settings.num_partitions == 1
+        assert settings.is_local_mode is True
 
-    def test_null_chunk_text_rows_are_dropped(self, spark):
-        from secure_semantic_docs.embeddings.chunk_embedder import generate_embeddings
-        from secure_semantic_docs.models import Config, EmbeddingConfig
+    def test_falls_back_when_reader_has_no_path(self, tmp_path):
+        from secure_semantic_docs.models import Config, ReaderEntry, ReadersConfig
+        from secure_semantic_docs.models.embedding_model import resolve_embedding_settings
 
-        cfg = Config(embedding=EmbeddingConfig(device="cpu", num_partitions=1))
-        silver_df = self._silver_df(spark, include_null_row=True)
-        assert silver_df.count() == 2
+        config = Config(
+            project_root=tmp_path,
+            readers=ReadersConfig(entries={
+                "raw_documents": ReaderEntry(options={"format": "text"})
+            })
+        )
 
-        with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model",
-                  return_value=_mock_model(dim=384))
+        with patch(
+                "secure_semantic_docs.models.embedding_model.resolve_key_material",
+                return_value=(b"\x03" * 32, "key-3")
         ):
-            gold_df = generate_embeddings(spark, silver_df, cfg)
+            settings = resolve_embedding_settings(self._spark(), config)
 
-        assert gold_df.count() == 1
+        assert settings.raw_docs_dir == str(config.raw_documents_dir)
 
-    def test_uses_default_parallelism_when_num_partitions_zero(self, spark):
-        from secure_semantic_docs.embeddings.chunk_embedder import generate_embeddings
-        from secure_semantic_docs.models import Config, EmbeddingConfig
+    def test_resolve_key_material_delegates_to_keyring_store(self):
+        from secure_semantic_docs.models.embedding_model import resolve_key_material
 
-        cfg = Config(embedding=EmbeddingConfig(device="cpu", num_partitions=0))
-        silver_df = self._silver_df(spark)
+        config = MagicMock()
+        with patch(
+                "secure_semantic_docs.security.keyring_store.resolve_key_material",
+                return_value=(b"\x04" * 32, "key-4")
+        ) as mock_resolver:
+            assert resolve_key_material(config) == (b"\x04" * 32, "key-4")
 
-        with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model",
-                  return_value=_mock_model(dim=384))
-        ):
-            gold_df = generate_embeddings(spark, silver_df, cfg)
-
-        assert gold_df.count() == 1
-
-    def test_loads_config_when_none_passed(self, spark):
-        from secure_semantic_docs.embeddings.chunk_embedder import generate_embeddings
-        from secure_semantic_docs.models import Config, EmbeddingConfig
-
-        mock_cfg = Config(embedding=EmbeddingConfig(device="cpu", num_partitions=1))
-        silver_df = self._silver_df(spark)
-
-        with (
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_config", return_value=mock_cfg),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.configure_worker_environment"),
-            patch("secure_semantic_docs.embeddings.chunk_embedder.load_cached_model",
-                  return_value=_mock_model(dim=384))
-        ):
-            gold_df = generate_embeddings(spark, silver_df, config=None)
-
-        assert gold_df.count() == 1
+        mock_resolver.assert_called_once_with(config)
 
 
-class TestGoldIngest:
+class TestEmbeddingIngest:
     def test_ingest_reads_embeds_and_writes(self):
         mock_spark = MagicMock()
         mock_cfg = MagicMock()
-        mock_silver_df = MagicMock()
-        mock_gold_df = MagicMock()
+        mock_documents_df = MagicMock()
+        mock_workset_df = MagicMock()
+        mock_embeddings_df = MagicMock()
 
-        mock_cfg.readers.__getitem__.return_value.options = {"format": "delta", "path": "/silver"}
-        mock_cfg.writers.__getitem__.return_value.options = {"format": "delta", "path": "/gold"}
+        mock_cfg.readers.__getitem__.return_value.options = {"format": "delta", "path": "/chunks"}
+        mock_cfg.writers.__getitem__.return_value.options = {"format": "delta", "path": "/embeddings"}
 
         with (
             patch(
                 "secure_semantic_docs.gold_ingestion.SparkReader"
             ) as mock_reader_cls,
             patch(
+                "secure_semantic_docs.gold_ingestion.create_chunk_workset",
+                return_value=mock_workset_df
+            ) as mock_workset,
+            patch(
+                "secure_semantic_docs.gold_ingestion.select_persisted_chunk_columns",
+                return_value=MagicMock()
+            ),
+            patch(
                 "secure_semantic_docs.gold_ingestion.generate_embeddings",
-                return_value=mock_gold_df
+                return_value=mock_embeddings_df
             ) as mock_gen,
             patch(
                 "secure_semantic_docs.gold_ingestion.SparkWriter"
             ) as mock_writer_cls
         ):
-            mock_reader_cls.return_value.read.return_value = mock_silver_df
+            mock_workset_df.persist.return_value = mock_workset_df
+            mock_reader_cls.return_value.read.return_value = mock_documents_df
             from secure_semantic_docs.gold_ingestion import ingest
             ingest(mock_spark, mock_cfg)
 
         mock_reader_cls.return_value.read.assert_called_once()
-        mock_gen.assert_called_once_with(mock_spark, mock_silver_df, mock_cfg)
-        mock_writer_cls.return_value.write.assert_called_once()
+        mock_workset.assert_called_once_with(mock_spark, mock_documents_df, mock_cfg)
+        mock_gen.assert_called_once_with(mock_spark, mock_workset_df, mock_cfg)
+        assert mock_writer_cls.return_value.write.call_count == 2
+        mock_workset_df.unpersist.assert_called_once()
 
     def test_ingest_loads_config_when_none(self):
         mock_spark = MagicMock()
@@ -535,3 +807,121 @@ class TestGoldIngest:
             main()
 
         assert logging.getLogger("py4j").level == logging.ERROR
+
+
+class TestBuildCachedEmbeddings:
+    @staticmethod
+    def _chunks_df_with_cache(spark, source_path: str):
+        from pyspark.sql.types import StructType
+        schema = StructType.fromDDL(
+            "chunk_id string, document_id string, chunk_span struct<start:int,end:int>, "
+            "classification string, allowed_roles array<string>, owner string, "
+            "department string, sensitivity_score float, source_path string, "
+            "version string, document_hash string, "
+            "embedding_ciphertext binary, embedding_nonce binary, "
+            "embedding_algorithm string, embedding_dim int, key_id string, model string"
+        )
+        return spark.createDataFrame(
+            [(
+                "c1", "doc-1", Row(start=0, end=2), "public", ["reader"], "alice", "eng",
+                0.1, source_path, "1", "hash-a",
+                b"cipher", b"nonce" * 5, "XSalsa20", 384, "test-key-id", "model-1"
+            )],
+            schema=schema
+        )
+
+    def test_returns_embedding_schema(self, spark, tmp_path):
+        from secure_semantic_docs.embeddings.cache_rows import build_cached_embeddings
+        from secure_semantic_docs.storage.schemas import load_schema
+
+        raw_docs_dir = tmp_path / "synthetic_data" / "raw_documents"
+        raw_docs_dir.mkdir(parents=True, exist_ok=True)
+        (raw_docs_dir / "doc-1.txt").write_text("hello world", encoding="utf-8")
+        source_path = "doc-1.txt"
+
+        hits_df = self._chunks_df_with_cache(spark, source_path)
+        embedding_schema = load_schema("gold_embeddings")
+
+        result = build_cached_embeddings(
+            hits_df,
+            "test-key-id",
+            "2024-01-01T00:00:00Z",
+            embedding_schema
+        )
+
+        assert result.count() == 1
+        assert _field_names(embedding_schema) == {f.name for f in result.schema}
+
+    def test_excludes_different_key(self, spark, tmp_path):
+        from secure_semantic_docs.embeddings.cache_rows import build_cached_embeddings
+        from secure_semantic_docs.storage.schemas import load_schema
+
+        raw_docs_dir = tmp_path / "synthetic_data" / "raw_documents"
+        raw_docs_dir.mkdir(parents=True, exist_ok=True)
+        (raw_docs_dir / "doc-1.txt").write_text("hello world", encoding="utf-8")
+        source_path = "doc-1.txt"
+
+        hits_df = self._chunks_df_with_cache(spark, source_path)
+        embedding_schema = load_schema("gold_embeddings")
+
+        result = build_cached_embeddings(
+            hits_df,
+            "different-key-id",
+            "2024-01-01T00:00:00Z",
+            embedding_schema
+        )
+        assert result.count() == 0
+
+    def test_generate_embeddings_uses_cache_hits(self, spark, tmp_path):
+        from secure_semantic_docs.embeddings.core import generate_embeddings
+        from secure_semantic_docs.models import Config, EmbeddingConfig
+        from secure_semantic_docs.security.keyring_store import generate_secret_key
+
+        raw_docs_dir = tmp_path / "synthetic_data" / "raw_documents"
+        raw_docs_dir.mkdir(parents=True, exist_ok=True)
+        (raw_docs_dir / "doc-1.txt").write_text("hello world", encoding="utf-8")
+        source_path = "doc-1.txt"
+
+        test_key = generate_secret_key()
+        cfg = Config(project_root=tmp_path, embedding=EmbeddingConfig(device="cpu", num_partitions=1))
+
+        from pyspark.sql.types import StructType
+        chunk_schema = StructType.fromDDL(
+            "chunk_id string, document_id string, chunk_span struct<start:int,end:int>, "
+            "classification string, allowed_roles array<string>, owner string, "
+            "department string, sensitivity_score float, source_path string, "
+            "version string, document_hash string"
+        )
+        chunks_df = spark.createDataFrame(
+            [("c1", "doc-1", Row(start=0, end=2), "public", ["reader"], "alice", "eng",
+              0.1, source_path, "1", "hash-a")],
+            schema=chunk_schema
+        )
+
+        cache_schema = StructType.fromDDL(
+            "chunk_id string, document_hash string, "
+            "embedding_ciphertext binary, embedding_nonce binary, "
+            "embedding_algorithm string, embedding_dim int, key_id string, model string"
+        )
+        mock_cache_df = spark.createDataFrame(
+            [("c1", "hash-a", b"cipher", b"nonce" * 5, "XSalsa20", 384, "test-key-id", "m1")],
+            schema=cache_schema
+        )
+
+        with (
+            patch("secure_semantic_docs.embeddings.core.load_cache", return_value=mock_cache_df),
+            patch("secure_semantic_docs.embeddings.row_encoder.configure_worker_environment"),
+            patch("secure_semantic_docs.embeddings.row_encoder.load_cached_model",
+                  return_value=_mock_model(dim=384)),
+            patch("secure_semantic_docs.models.embedding_model.resolve_key_material",
+                  return_value=(test_key, "test-key-id")),
+            patch("secure_semantic_docs.embeddings.core.write_cache")
+        ):
+            result_df = generate_embeddings(spark, chunks_df, cfg)
+
+        assert result_df.count() >= 1
+
+
+def _field_names(schema: StructType) -> set[str]:
+    fields: list[StructField] = list(schema.fields or [])
+    return {field.name for field in fields}

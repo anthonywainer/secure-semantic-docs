@@ -19,7 +19,7 @@ class TestLoadSchemaBronze:
         field_names = {f.name for f in fields}
         assert {
                    "document_id",
-                   "raw_text",
+                   "source_path",
                    "classification",
                    "allowed_roles",
                    "ingestion_timestamp"
@@ -31,7 +31,7 @@ class TestLoadSchemaBronze:
         assert doc_id.nullable is False
 
     def test_field_count(self, spark):
-        assert len(load_schema("bronze_documents").fields or []) == 13
+        assert len(load_schema("bronze_documents").fields or []) == 12
 
     def test_returns_struct_type(self, spark):
         from pyspark.sql.types import StructType

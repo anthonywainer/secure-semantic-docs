@@ -34,7 +34,7 @@ class TestSilverIngest:
             for schema_field in _read_silver_chunks(spark, pipeline_config).schema
         }
         required_silver_fields = {
-            "chunk_id", "document_id", "chunk_index", "chunk_text",
+            "chunk_id", "document_id", "chunk_index", "chunk_span",
             "classification", "allowed_roles", "owner", "department",
             "version", "source_path", "document_hash"
         }

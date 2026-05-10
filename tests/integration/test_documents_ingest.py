@@ -26,7 +26,7 @@ class TestIngest:
         ingest(spark, cfg)
         field_names = {f.name for f in _read_bronze(spark, cfg).schema}
         required = {
-            "document_id", "title", "source_path", "raw_text",
+            "document_id", "title", "source_path",
             "classification", "owner", "department", "allowed_roles",
             "version", "created_at", "contains_sensitive_info",
             "document_hash", "ingestion_timestamp"
@@ -38,5 +38,6 @@ class TestIngest:
         cfg = load_config(project_root=tmp_path)
         ingest(spark, cfg)
         row = _read_bronze(spark, cfg).first()
+        assert row is not None
         assert row["ingestion_timestamp"] is not None
         assert "T" in row["ingestion_timestamp"]

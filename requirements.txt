@@ -2,6 +2,11 @@
 # Generated from pyproject.toml. Install with:
 #   uv pip install -r requirements.txt
 #   pip install -r requirements.txt
+py4j==0.10.9.9
 pyspark==4.1.1
 PyYAML==6.0.3
+numpy==2.4.4
 sentence-transformers==5.4.1
+torch==2.11.0
+keyring==25.7.0
+PyNaCl==1.6.2

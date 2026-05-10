@@ -40,6 +40,6 @@ class BaseSettings(metaclass=_BaseSettingsMeta):
     DOCSEC_PROJECT_ROOT = "DOCSEC_PROJECT_ROOT"
     DOCSEC_PROJECT_ROOT_LEGACY = "SSD_PROJECT_ROOT"
 
-    if TYPE_CHECKING:
+    if TYPE_CHECKING:  # pragma: no cover
         project_root: ClassVar[Path]
         resources_dir: ClassVar[Path]

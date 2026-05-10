@@ -25,13 +25,22 @@ from typing import TYPE_CHECKING
 
 from secure_semantic_docs.core import BaseSettings
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(BaseSettings.APP_NAME)
 
 # Keyed by (model_name, device) so switching device within one process is safe.
 _MODEL_CACHE: dict[tuple[str, str], SentenceTransformer] = {}
+
+
+def _probe_torch_devices() -> tuple[bool, bool]:
+    try:
+        import torch  # noqa: PLC0415
+
+        return torch.cuda.is_available(), torch.backends.mps.is_available()
+    except ImportError:
+        return False, False
 
 
 def resolve_device(preferred: str) -> str:
@@ -44,14 +53,7 @@ def resolve_device(preferred: str) -> str:
     if preferred != "auto":
         return preferred
 
-    try:
-        import torch  # noqa: PLC0415
-
-        cuda_available: bool = torch.cuda.is_available()
-        mps_available: bool = torch.backends.mps.is_available()
-    except ImportError:
-        cuda_available = False
-        mps_available = False
+    cuda_available, mps_available = _probe_torch_devices()
 
     if cuda_available:
         return "cuda"

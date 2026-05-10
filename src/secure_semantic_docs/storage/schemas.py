@@ -39,9 +39,9 @@ def extract_column_defs(ddl_text: str) -> str:
     """Extract the column-definition list from a CREATE TABLE DDL string.
 
     Strips SQL line comments (``--``), then finds the column block between
-    the first ``(`` and its matching ``)`` using a balanced-parenthesis walk,
-    so that ``TBLPROPERTIES ( ... )`` at the end of the file and any ``(``
-    characters inside comment lines do not confuse the extraction.
+    the first ``(`` and its matching ``)`` using a balanced-parenthesis walk.
+    Parentheses that appear inside quoted ``COMMENT '...'`` text are ignored so
+    the extraction is not truncated by descriptive column comments.
 
     Returns only the comma-separated column definitions suitable for
     :func:`StructType.fromDDL`.
@@ -52,11 +52,19 @@ def extract_column_defs(ddl_text: str) -> str:
 
     depth = 1
     pos = start
+    in_single_quote = False
     while pos < len(stripped) and depth > 0:
-        if stripped[pos] == "(":
-            depth += 1
-        elif stripped[pos] == ")":
-            depth -= 1
+        current = stripped[pos]
+        if current == "'":
+            if in_single_quote and pos + 1 < len(stripped) and stripped[pos + 1] == "'":
+                pos += 1
+            else:
+                in_single_quote = not in_single_quote
+        elif not in_single_quote:
+            if current == "(":
+                depth += 1
+            elif current == ")":
+                depth -= 1
         pos += 1
     end = pos - 1
 

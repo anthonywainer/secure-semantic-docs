@@ -22,6 +22,126 @@ instructions for every code change unless the user explicitly asks otherwise.
 
 ---
 
+## Clean Code
+
+### Naming
+
+- Choose names that reveal intent. A good name eliminates the need for a comment.
+- Name functions after what they do, not how they do it. Prefer `encrypt_chunk_fields` over
+  `run_nacl_loop`.
+- Name booleans as assertions: `is_sensitive`, `requires_encryption`, `has_roles`.
+- Avoid generic names (`data`, `result`, `info`, `temp`, `obj`) unless scope is trivially small.
+- Do not encode type information in names (`chunk_list`, `name_str`). Types belong in annotations.
+
+### Functions
+
+- A function should do exactly one thing and do it well.
+- Keep the abstraction level consistent within a function. Do not mix high-level orchestration
+  with low-level detail in the same function body.
+- Prefer guard clauses (early returns) over nested `if/else` ladders:
+  ```python
+  # Prefer
+  def process(chunk):
+      if not chunk.get("text"):
+          return None
+      ...
+
+  # Avoid
+  def process(chunk):
+      if chunk.get("text"):
+          ...
+      else:
+          return None
+  ```
+- Limit the number of parameters. When a function needs more than three parameters, consider
+  grouping related parameters into a dataclass or config object.
+- Avoid boolean flag parameters that silently alter control flow. Split into two named functions.
+- Do not return `None` mixed with typed values unless `None` is a meaningful sentinel.
+
+### Classes and Modules
+
+- A class should have one reason to change (Single Responsibility). Separate I/O, validation,
+  transformation, and storage into distinct classes or modules.
+- Keep classes small. Prefer composing small classes over inheriting from large ones.
+- Expose only what callers need. Keep implementation helpers private (leading `_`).
+- Do not accumulate unrelated utilities in a single `utils.py`. Name modules after their purpose.
+
+### Comments and Documentation
+
+- Write code that does not need comments to be understood.
+- Use a comment only when the code cannot express the why (e.g., a non-obvious algorithm choice,
+  a regulatory constraint, a workaround for a third-party bug).
+- Never use comments to disable or explain bad code. Fix the code instead.
+- Write docstrings for public functions, classes, and modules. Focus on behaviour and contract,
+  not implementation.
+
+### Dead Code and Duplication
+
+- Delete unused functions, imports, variables, and branches before finishing a change.
+- Do not leave `TODO`, `FIXME`, or commented-out code in committed changes.
+- Extract duplicated logic into a shared helper. Only merge code that shares the same reason
+  to change.
+
+---
+
+## SOLID Principles
+
+### Single Responsibility (S)
+
+- Every module, class, and function should have exactly one reason to change.
+- Separate orchestration (calling steps in order) from transformation (manipulating data) from
+  I/O (reading/writing files, Spark, storage).
+- Example: `conform_document_metadata` transforms a DataFrame; `SparkReader` handles I/O.
+  Neither knows about the other.
+
+### Open / Closed (O)
+
+- Extend behaviour through new code, not by modifying existing stable code.
+- Use `Protocol` or abstract base classes to define extension points. New implementations
+  satisfy the protocol without touching existing consumers:
+  ```python
+  from typing import Protocol
+
+  class TextChunker(Protocol):
+      def chunk(self, text: str) -> list[str]: ...
+  ```
+- Pipeline steps should accept their dependencies by interface, not by concrete class, so
+  alternative implementations can be swapped without editing the step.
+
+### Liskov Substitution (L)
+
+- Subtypes must be substitutable for their base types without altering correctness.
+- Do not override a method in a way that weakens preconditions or strengthens postconditions
+  relative to the base class contract.
+- Prefer `Protocol` over inheritance when you only need structural compatibility.
+
+### Interface Segregation (I)
+
+- Keep interfaces narrow. A caller should not depend on methods it does not use.
+- Split large protocols or base classes into focused, composable pieces.
+- When a class implements an interface, it should implement every method meaningfully —
+  not with `raise NotImplementedError`.
+
+### Dependency Inversion (D)
+
+- High-level modules must not depend on low-level modules. Both should depend on abstractions.
+- Inject dependencies (models, stores, clients) rather than constructing them inside functions.
+  This makes components testable in isolation:
+  ```python
+  # Prefer — dependency injected
+  def enrich_chunks(chunks, detector: SensitivityDetector) -> list[dict]:
+      ...
+
+  # Avoid — hard dependency inside the function
+  def enrich_chunks(chunks) -> list[dict]:
+      detector = SensitivityDetector()
+      ...
+  ```
+- In Spark jobs, pass `SparkSession`, config objects, and clients as parameters to pipeline
+  functions so the functions remain testable without a live cluster.
+
+---
+
 ## Python Style
 
 ### General

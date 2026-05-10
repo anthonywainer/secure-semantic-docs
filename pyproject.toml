@@ -4,24 +4,27 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "secure-semantic-docs"
-version = "0.3.0"
+version = "0.4.0"
 description = "Secure semantic document search architecture"
 readme = "README.md"
 requires-python = ">=3.14"
 license = { text = "MIT" }
 authors = [{ name = "AnthonyWainer" }]
 dependencies = [
+    "keyring>=25.7.0",
+    "numpy>=1.26",
+    "py4j>=0.10.9.9",
+    "PyNaCl>=1.6.2",
     "pyspark==4.1.1",
     "PyYAML==6.0.3",
-    "sentence-transformers>=5.4.1"
+    "sentence-transformers>=5.4.1",
+    "torch>=2.0",
 ]
 
 [dependency-groups]
 dev = [
-    "numpy>=1.26",
     "pytest==9.0.3",
     "pytest-cov==7.1.0",
-    "pyspark==4.1.1",
     "ruff==0.15.12"
 ]
 
@@ -41,4 +44,12 @@ ignore = ["E501", "I001"]
 testpaths = ["tests"]
 markers = [
     "integration: marks tests that require external infrastructure"
+]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:"
 ]
