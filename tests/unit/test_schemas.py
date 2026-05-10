@@ -22,6 +22,23 @@ class TestExtractColumnDefs:
         assert "COMMENT" not in result
         assert "id STRING" in result
 
+    def test_ignores_parentheses_inside_comment_text(self):
+        ddl = "CREATE TABLE t (\n    span STRUCT<start: INT, end: INT> COMMENT 'Word span [start, end)'\n);"
+        result = extract_column_defs(ddl)
+        assert "COMMENT" not in result
+        assert "span STRUCT<start: INT, end: INT>" in result
+
+    def test_handles_escaped_quote_inside_comment_text(self):
+        ddl = "CREATE TABLE t (\n    owner STRING COMMENT 'Owner''s note (draft)'\n);"
+        result = extract_column_defs(ddl)
+        assert "COMMENT" not in result
+        assert "owner STRING" in result
+
+    def test_preserves_types_with_nested_parentheses(self):
+        ddl = "CREATE TABLE t (\n    amount DECIMAL(10, 2)\n);"
+        result = extract_column_defs(ddl)
+        assert "amount DECIMAL(10, 2)" in result
+
     def test_strips_whitespace(self):
         ddl = "CREATE TABLE t (\n    col STRING\n);"
         result = extract_column_defs(ddl)

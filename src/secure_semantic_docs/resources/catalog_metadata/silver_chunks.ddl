@@ -3,7 +3,7 @@
 -- Full identifier (Iceberg / production): <catalog>.silver.chunks
 -- Parquet path (local):                   lakehouse/silver_chunks/
 --
--- Cleaned and chunked document text with sensitivity annotations.
+-- Chunk metadata with sensitivity annotations and no plaintext content.
 -- One row per chunk, derived from bronze.documents.
 -- Populated by the chunking pipeline (pipeline/silver.py).
 
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS silver.chunks (
     chunk_id                    STRING        NOT NULL COMMENT 'Unique chunk identifier: <document_id>-<chunk_index>',
     document_id                 STRING        NOT NULL COMMENT 'Parent document identifier, foreign key to bronze.documents',
     chunk_index                 INT           NOT NULL COMMENT 'Zero-based position of this chunk within the document',
-    chunk_text                  STRING        COMMENT 'Cleaned and normalised text content of this chunk',
+    chunk_span                  STRUCT<start: INT, end: INT> COMMENT 'Word index span [start, end) into the cleaned document word list; reconstruct with words[start:end]',
     classification              STRING        COMMENT 'Inherited security classification from the parent document',
     allowed_roles               ARRAY<STRING> COMMENT 'Inherited permitted roles from the parent document',
     owner                       STRING        COMMENT 'Inherited document owner name',
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS silver.chunks (
     requires_encryption         BOOLEAN       COMMENT 'True when this chunk should be encrypted before storage',
     requires_restricted_access  BOOLEAN       COMMENT 'True when this chunk requires restricted role access'
 )
-COMMENT 'Silver layer: chunked and sensitivity-annotated text derived from bronze.documents. No embeddings.'
+COMMENT 'Silver layer: chunk spans and sensitivity annotations derived from bronze.documents. No plaintext chunk text or embeddings.'
 TBLPROPERTIES (
     'layer'                   = 'silver',
     'table'                   = 'chunks',

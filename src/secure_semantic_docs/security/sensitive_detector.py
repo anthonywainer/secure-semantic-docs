@@ -1,4 +1,4 @@
-"""Synthetic sensitive information detection for the silver layer.
+"""Synthetic sensitive information detection.
 
 This module is a **demo-level simulation** of PII and sensitive content
 detection. It is not a production-grade PII engine. All patterns are
@@ -9,9 +9,9 @@ data generator.
 import logging
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
 
 from secure_semantic_docs.core import BaseSettings
+from secure_semantic_docs.models.sensitivity_model import SensitivityResult
 
 logger = logging.getLogger(BaseSettings.APP_NAME)
 
@@ -56,16 +56,6 @@ _CLASSIFICATION_BASE_SCORE: dict[str, float] = {
 }
 
 
-@dataclass(frozen=True)
-class SensitivityResult:
-    """Result of a sensitivity analysis for a single chunk."""
-
-    sensitivity_score: float
-    detected_sensitive_types: list[str]
-    requires_encryption: bool
-    requires_restricted_access: bool
-
-
 def analyse_chunk(text: str, classification: str) -> SensitivityResult:
     """Analyse *text* for sensitive patterns and return a :class:`SensitivityResult`.
 
@@ -94,26 +84,25 @@ def analyse_chunk(text: str, classification: str) -> SensitivityResult:
     )
 
 
+def _enrich_chunk(chunk_payload: Mapping[str, object]) -> dict[str, object]:
+    """Return *chunk_payload* with sensitivity fields added."""
+    result = analyse_chunk(
+        str(chunk_payload.get("chunk_text", "") or ""),
+        str(chunk_payload.get("classification", "public"))
+    )
+    return {
+        **chunk_payload,
+        "sensitivity_score": result.sensitivity_score,
+        "detected_sensitive_types": result.detected_sensitive_types,
+        "requires_encryption": result.requires_encryption,
+        "requires_restricted_access": result.requires_restricted_access
+    }
+
+
 def enrich_chunks_with_sensitivity(
         chunk_payloads: list[Mapping[str, object]]
 ) -> list[dict[str, object]]:
     """Add sensitivity fields to a list of chunk dictionaries."""
-    enriched_chunk_payloads: list[dict[str, object]] = []
-    chunk_count = 0
-    for chunk_payload in chunk_payloads:
-        result = analyse_chunk(
-            str(chunk_payload.get("chunk_text", "") or ""),
-            str(chunk_payload.get("classification", "public"))
-        )
-        enriched_chunk_payloads.append(
-            {
-                **chunk_payload,
-                "sensitivity_score": result.sensitivity_score,
-                "detected_sensitive_types": result.detected_sensitive_types,
-                "requires_encryption": result.requires_encryption,
-                "requires_restricted_access": result.requires_restricted_access
-            }
-        )
-        chunk_count += 1
-    logger.info("Enriched %d chunks with sensitivity metadata.", chunk_count)
-    return enriched_chunk_payloads
+    enriched = [_enrich_chunk(chunk) for chunk in chunk_payloads]
+    logger.info("Enriched %d chunks with sensitivity metadata.", len(enriched))
+    return enriched

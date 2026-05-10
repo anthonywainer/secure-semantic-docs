@@ -95,7 +95,7 @@ class TestProjectMetadata:
         metadata = load_project_metadata()
 
         assert metadata.name == "secure-semantic-docs"
-        assert metadata.version == "0.3.0"
+        assert metadata.version == "0.4.0"
         assert metadata.author == "AnthonyWainer"
 
 
@@ -110,6 +110,11 @@ class TestBuildSparkSessionUnit:
             patch("secure_semantic_docs.core.spark.SparkSession"),
             patch("secure_semantic_docs.core.spark.SparkConf")
         )
+
+    def test_patches_returns_two_patchers(self):
+        spark_patcher, conf_patcher = self._patches()
+        assert spark_patcher is not None
+        assert conf_patcher is not None
 
     def test_no_config_calls_load_config(self, tmp_path, monkeypatch):
         monkeypatch.setenv("DOCSEC_PROJECT_ROOT", str(tmp_path))

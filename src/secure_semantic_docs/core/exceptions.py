@@ -4,3 +4,11 @@ class SecureSemanticDocsError(Exception):
 
 class EmbeddingError(SecureSemanticDocsError):
     """Raised when embedding generation fails."""
+
+
+class VectorStoreError(SecureSemanticDocsError):
+    """Raised when a vector store operation fails."""
+
+
+class EncryptionError(SecureSemanticDocsError):
+    """Raised when encryption or decryption fails."""

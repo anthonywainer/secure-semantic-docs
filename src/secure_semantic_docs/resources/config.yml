@@ -45,6 +45,13 @@ readers:
       mergeSchema: "true"
       path: "{project_root}/lakehouse/gold_embeddings"
 
+  embed_cache:
+    stream: false
+    options:
+      format: parquet
+      mergeSchema: "true"
+      path: "{project_root}/lakehouse/embed_cache"
+
   metadata_documents:
     stream: false
     options:
@@ -83,6 +90,14 @@ writers:
       mode: overwrite
       compression: snappy
       path: "{project_root}/lakehouse/gold_embeddings"
+
+  embed_cache:
+    stream: false
+    options:
+      format: parquet
+      mode: append
+      compression: snappy
+      path: "{project_root}/lakehouse/embed_cache"
 
 
 chunking:

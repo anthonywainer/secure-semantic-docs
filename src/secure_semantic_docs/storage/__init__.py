@@ -2,8 +2,7 @@
 
 Sub-modules
 -----------
-catalog_metadata       -- DDL-based schema loader for the bronze layer
-vector_store  -- Chroma vector store wrapper (imported on demand in later layers)
+schemas      -- DDL-based schema loader for the lakehouse layers
 """
 
 from secure_semantic_docs.storage.schemas import load_schema

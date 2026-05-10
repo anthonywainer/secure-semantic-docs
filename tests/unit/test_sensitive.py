@@ -1,8 +1,8 @@
 """Unit tests for sensitive information detection."""
 
 
-from secure_semantic_docs.core.sensitive import (
-    SensitivityResult,
+from secure_semantic_docs.models import SensitivityResult
+from secure_semantic_docs.security.sensitive_detector import (
     analyse_chunk,
     enrich_chunks_with_sensitivity
 )
