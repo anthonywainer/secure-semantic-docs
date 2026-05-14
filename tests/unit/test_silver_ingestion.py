@@ -347,7 +347,7 @@ class TestBuildChunkDataframe:
         ):
             result = _workset_schema()
 
-        assert "chunk_text" in {field.name for field in result.fields}
+        assert "chunk_text" in result.fieldNames()
 
 
 class TestSilverMain:

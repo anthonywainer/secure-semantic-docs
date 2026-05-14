@@ -17,6 +17,7 @@ dependencies = [
     "PyNaCl>=1.6.2",
     "pyspark==4.1.1",
     "PyYAML==6.0.3",
+    "ruff>=0.15.12",
     "sentence-transformers>=5.4.1",
     "torch>=2.0",
 ]
