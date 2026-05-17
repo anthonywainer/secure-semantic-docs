@@ -41,4 +41,4 @@ class IcebergConfig:
     catalog_name: str = "local"
     catalog_type: str = "rest"
     catalog_uri: str = "http://iceberg-rest:8181"
-    warehouse: str = "/app/lakehouse/iceberg_warehouse"
+    warehouse: str = "/app/runtime/lakehouse/iceberg_warehouse"

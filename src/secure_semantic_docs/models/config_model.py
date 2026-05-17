@@ -26,8 +26,8 @@ class Config:
 
     @property
     def data_dir(self) -> Path:
-        """Return the synthetic_data directory."""
-        return self.project_root / "synthetic_data"
+        """Return the synthetic demo data directory."""
+        return self.project_root / "data" / "synthetic_data"
 
     @property
     def raw_documents_dir(self) -> Path:
@@ -47,7 +47,7 @@ class Config:
     @property
     def lakehouse_dir(self) -> Path:
         """Return the lakehouse root directory."""
-        return self.project_root / "lakehouse"
+        return self.project_root / "runtime" / "lakehouse"
 
     @property
     def bronze_dir(self) -> Path:
@@ -57,4 +57,4 @@ class Config:
     @property
     def logs_dir(self) -> Path:
         """Return the logs directory."""
-        return self.project_root / "logs"
+        return self.project_root / "runtime" / "logs"

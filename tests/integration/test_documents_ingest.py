@@ -14,13 +14,19 @@ def _read_bronze(spark, cfg):
 
 @pytest.mark.integration
 class TestIngest:
-    def test_ingests_25_documents(self, spark, tmp_path, monkeypatch):
+    def test_ingests_25_documents(self, spark, tmp_path, monkeypatch, seeded_demo_data):
         monkeypatch.setenv("DOCSEC_PROJECT_ROOT", str(tmp_path))
         cfg = load_config(project_root=tmp_path)
         ingest(spark, cfg)
         assert _read_bronze(spark, cfg).count() == 25
 
-    def test_bronze_schema_has_expected_fields(self, spark, tmp_path, monkeypatch):
+    def test_bronze_schema_has_expected_fields(
+        self,
+        spark,
+        tmp_path,
+        monkeypatch,
+        seeded_demo_data
+    ):
         monkeypatch.setenv("DOCSEC_PROJECT_ROOT", str(tmp_path))
         cfg = load_config(project_root=tmp_path)
         ingest(spark, cfg)
@@ -33,7 +39,13 @@ class TestIngest:
         }
         assert required <= field_names
 
-    def test_ingestion_timestamp_populated(self, spark, tmp_path, monkeypatch):
+    def test_ingestion_timestamp_populated(
+        self,
+        spark,
+        tmp_path,
+        monkeypatch,
+        seeded_demo_data
+    ):
         monkeypatch.setenv("DOCSEC_PROJECT_ROOT", str(tmp_path))
         cfg = load_config(project_root=tmp_path)
         ingest(spark, cfg)

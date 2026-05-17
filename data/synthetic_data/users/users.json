@@ -1,0 +1,82 @@
+[
+  {
+    "user_id": "admin",
+    "name": "Platform Admin",
+    "role": "admin",
+    "department": "platform",
+    "clearance_level": "restricted",
+    "password": "admin"
+  },
+  {
+    "user_id": "business_analyst",
+    "name": "Business Analyst",
+    "role": "business_analyst",
+    "department": "business",
+    "clearance_level": "internal",
+    "password": "business"
+  },
+  {
+    "user_id": "security_engineer",
+    "name": "Security Engineer",
+    "role": "security_engineer",
+    "department": "security",
+    "clearance_level": "confidential",
+    "password": "security"
+  },
+  {
+    "user_id": "finance_manager",
+    "name": "Finance Manager",
+    "role": "finance_manager",
+    "department": "finance",
+    "clearance_level": "confidential",
+    "password": "finance"
+  },
+  {
+    "user_id": "external_viewer",
+    "name": "External Viewer",
+    "role": "external_viewer",
+    "department": "external",
+    "clearance_level": "public",
+    "password": "external"
+  },
+  {
+    "user_id": "USR-001",
+    "name": "Alice Nguyen",
+    "role": "data_engineer",
+    "department": "Data Platform",
+    "clearance_level": "internal",
+    "password": "alice"
+  },
+  {
+    "user_id": "USR-002",
+    "name": "Bob Martinez",
+    "role": "business_analyst",
+    "department": "Operations",
+    "clearance_level": "internal",
+    "password": "bob"
+  },
+  {
+    "user_id": "USR-003",
+    "name": "Carol Smith",
+    "role": "security_engineer",
+    "department": "Security",
+    "clearance_level": "confidential",
+    "password": "carol"
+  },
+  {
+    "user_id": "USR-004",
+    "name": "David Chen",
+    "role": "finance_manager",
+    "department": "Finance",
+    "clearance_level": "restricted",
+    "password": "david"
+  },
+  {
+    "user_id": "USR-005",
+    "name": "Eve Johnson",
+    "role": "external_viewer",
+    "department": "External",
+    "clearance_level": "public",
+    "password": "eve"
+  }
+]

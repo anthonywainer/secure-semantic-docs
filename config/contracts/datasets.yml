@@ -1,0 +1,248 @@
+datasets:
+  landing_documents:
+    id: landing_documents
+    name: Landing Documents
+    layer: landing
+    owner: data_platform
+    description: Raw source documents ingested from external sources
+    classification: public
+    tags: [ landing, source ]
+    fields:
+      - { name: document_id, type: STRING, required: true, sensitive: false }
+      - { name: path, type: STRING, required: true, sensitive: false }
+    required_fields: [ document_id, path ]
+    sensitive_fields: [ ]
+    forbidden_fields: [ ]
+    lineage_upstream: [ ]
+    lineage_downstream: [ bronze_documents ]
+    security_notes: Source files may contain sensitive data
+    sensitive_flags: { has_pii: false, has_credentials: false }
+
+  bronze_documents:
+    id: bronze_documents
+    name: Bronze Documents
+    layer: bronze
+    owner: data_platform
+    description: Raw document metadata with classification, ownership, and ingestion timestamp
+    classification: mixed
+    tags: [ bronze, documents, metadata ]
+    fields:
+      - { name: document_id, type: STRING, required: true, sensitive: false }
+      - { name: title, type: STRING, required: true, sensitive: false }
+      - { name: classification, type: STRING, required: true, sensitive: false }
+      - { name: owner, type: STRING, required: true, sensitive: false }
+      - { name: department, type: STRING, required: false, sensitive: false }
+      - { name: allowed_roles, type: "ARRAY<STRING>", required: true, sensitive: false }
+      - { name: version, type: STRING, required: false, sensitive: false }
+      - { name: created_at, type: STRING, required: false, sensitive: false }
+      - { name: contains_sensitive_info, type: BOOLEAN, required: false, sensitive: false }
+      - { name: document_hash, type: STRING, required: false, sensitive: false }
+      - { name: ingestion_timestamp, type: STRING, required: false, sensitive: false }
+    required_fields: [ document_id, classification, owner, allowed_roles ]
+    sensitive_fields: [ ]
+    forbidden_fields: [ ]
+    lineage_upstream: [ landing_documents ]
+    lineage_downstream: [ silver_chunks ]
+    security_notes: Contains classification and role information
+    sensitive_flags: { has_pii: false, has_credentials: false }
+
+  silver_chunks:
+    id: silver_chunks
+    name: Silver Chunks
+    layer: silver
+    owner: data_platform
+    description: Chunk metadata with sensitivity annotations and no plaintext content
+    classification: mixed
+    tags: [ silver, chunks, sensitivity ]
+    fields:
+      - { name: chunk_id, type: STRING, required: true, sensitive: false }
+      - { name: document_id, type: STRING, required: true, sensitive: false }
+      - { name: chunk_index, type: INT, required: true, sensitive: false }
+      - { name: classification, type: STRING, required: true, sensitive: false }
+      - { name: allowed_roles, type: "ARRAY<STRING>", required: false, sensitive: false }
+      - { name: owner, type: STRING, required: false, sensitive: false }
+      - { name: department, type: STRING, required: false, sensitive: false }
+      - { name: sensitivity_score, type: FLOAT, required: false, sensitive: false }
+      - { name: requires_encryption, type: BOOLEAN, required: false, sensitive: false }
+    required_fields: [ chunk_id, document_id, classification ]
+    sensitive_fields: [ ]
+    forbidden_fields: [ ]
+    lineage_upstream: [ bronze_documents ]
+    lineage_downstream: [ gold_embeddings ]
+    security_notes: Stores sensitivity annotations; plaintext not stored
+    sensitive_flags: { has_pii: false, has_credentials: false }
+
+  gold_embeddings:
+    id: gold_embeddings
+    name: Gold Encrypted Embeddings
+    layer: gold
+    owner: data_platform
+    description: Encrypted chunk embeddings with governance metadata ready for authorized similarity search
+    classification: confidential
+    tags: [ gold, embeddings, encrypted ]
+    fields:
+      - { name: embedding_id, type: STRING, required: true, sensitive: false }
+      - { name: chunk_id, type: STRING, required: true, sensitive: false }
+      - { name: document_id, type: STRING, required: true, sensitive: false }
+      - { name: embedding_ciphertext, type: BINARY, required: false, sensitive: true, forbidden_in_safe_views: true }
+      - { name: embedding_nonce, type: BINARY, required: false, sensitive: true, forbidden_in_safe_views: true }
+      - { name: key_id, type: STRING, required: false, sensitive: true, forbidden_in_safe_views: true }
+      - { name: embedding_algorithm, type: STRING, required: false, sensitive: false }
+      - { name: embedding_dim, type: INT, required: false, sensitive: false }
+      - { name: embedding_model, type: STRING, required: false, sensitive: false }
+      - { name: classification, type: STRING, required: true, sensitive: false }
+      - { name: allowed_roles, type: "ARRAY<STRING>", required: false, sensitive: false }
+      - { name: owner, type: STRING, required: false, sensitive: false }
+      - { name: department, type: STRING, required: false, sensitive: false }
+    required_fields: [ embedding_id, chunk_id, document_id, classification ]
+    sensitive_fields: [ embedding_ciphertext, embedding_nonce, key_id ]
+    forbidden_fields: [ embedding_ciphertext, embedding_nonce, key_id ]
+    lineage_upstream: [ silver_chunks ]
+    lineage_downstream: [ trino_governed_views, secure_retrieval_service ]
+    security_notes: "Plaintext vectors never persist; safe SQL views never expose ciphertext, nonce, or key identifiers."
+    sensitive_flags: { has_pii: false, has_credentials: false, has_encrypted_embeddings: true }
+
+  trino_governed_views:
+    id: trino_governed_views
+    name: Trino Governed Views
+    layer: serving
+    owner: data_platform
+    description: "Trino SQL engine exposing safe governed views over bronze, silver, and gold layers"
+    classification: internal
+    tags: [ trino, sql, governed, views ]
+    fields:
+      - { name: "safe.bronze_documents", type: VIEW, required: false, sensitive: false }
+      - { name: "safe.silver_chunks", type: VIEW, required: false, sensitive: false }
+      - { name: "safe.gold_embedding_catalog", type: VIEW, required: false, sensitive: false }
+    required_fields: [ ]
+    sensitive_fields: [ ]
+    forbidden_fields: [ embedding_ciphertext, embedding_nonce, key_id ]
+    lineage_upstream: [ gold_embeddings ]
+    lineage_downstream: [ superset_sql_ui ]
+    security_notes: "Raw schema is admin-only. Safe schema exposes only sanitised fields. embedding_ciphertext, embedding_nonce, key_id are never exposed in safe views."
+    sensitive_flags: { has_pii: false, has_credentials: false, has_encrypted_embeddings: false }
+
+  secure_retrieval_service:
+    id: secure_retrieval_service
+    name: Secure Retrieval Service
+    layer: serving
+    owner: data_platform
+    description: Semantic search service with permission filtering and secure decryption
+    classification: internal
+    tags: [ search, retrieval, secure ]
+    fields: [ ]
+    required_fields: [ ]
+    sensitive_fields: [ ]
+    forbidden_fields: [ ]
+    lineage_upstream: [ gold_embeddings ]
+    lineage_downstream: [ streamlit_governed_ui ]
+    security_notes: "Filters permissions first, decrypts only authorized embeddings, and writes audit events for governed retrieval."
+    sensitive_flags: { requires_auth: true, audited: true }
+
+  streamlit_governed_ui:
+    id: streamlit_governed_ui
+    name: Streamlit Governed UI
+    layer: ui
+    owner: data_platform
+    description: Controlled Streamlit UI for role-based semantic search demonstration.
+    classification: internal
+    tags: [ ui, streamlit, rbac, demo ]
+    fields: [ ]
+    required_fields: [ ]
+    sensitive_fields: [ ]
+    forbidden_fields: [ ]
+    lineage_upstream: [ secure_retrieval_service ]
+    lineage_downstream: [ audit_events ]
+    security_notes: No direct SQL access. All actions go through the Python permission and retrieval layer.
+    sensitive_flags: { exposes_plaintext: false, enforces_rbac: true }
+
+  superset_sql_ui:
+    id: superset_sql_ui
+    name: Superset SQL UI
+    layer: ui
+    owner: data_platform
+    description: Apache Superset SQL exploration UI connected to Trino. Exposes only safe governed datasets.
+    classification: internal
+    tags: [ superset, sql_ui, dashboards, governed ]
+    fields: [ ]
+    required_fields: [ ]
+    sensitive_fields: [ ]
+    forbidden_fields: [ ]
+    lineage_upstream: [ trino_governed_views ]
+    lineage_downstream: [ ]
+    security_notes: "Connected to Trino lakehouse catalog. Exposes only safe.* views. Does not expose raw schema, encrypted fields, or embedding internals."
+    sensitive_flags: { has_pii: false, has_credentials: false }
+
+  audit_events:
+    id: audit_events
+    name: Audit Events Log
+    layer: audit
+    owner: data_platform
+    description: Immutable audit trail of access decisions and governed retrieval queries
+    classification: internal
+    tags: [ audit, compliance ]
+    fields:
+      - { name: timestamp, type: STRING, required: true, sensitive: false }
+      - { name: request_id, type: STRING, required: true, sensitive: false }
+      - { name: event_type, type: STRING, required: true, sensitive: false }
+      - { name: user_id, type: STRING, required: true, sensitive: false }
+      - { name: role, type: STRING, required: false, sensitive: false }
+      - { name: action, type: STRING, required: false, sensitive: false }
+      - { name: status, type: STRING, required: true, sensitive: false }
+    required_fields: [ timestamp, request_id, event_type, user_id, status ]
+    sensitive_fields: [ ]
+    forbidden_fields: [ ]
+    lineage_upstream: [ secure_retrieval_service ]
+    lineage_downstream: [ ]
+    security_notes: "Immutable record of all governed access decisions; never delete."
+    sensitive_flags: { contains_audit_trail: true }
+
+  chroma_vector_index:
+    id: chroma_vector_index
+    name: Chroma Vector Index
+    layer: index
+    owner: data_platform
+    description: "Fast vector candidate index. Not the source of truth. Stores safe metadata and embedding vectors only."
+    classification: internal
+    tags: [ chroma, vector, index, candidate ]
+    fields:
+      - { name: chunk_id, type: STRING, required: true, sensitive: false }
+      - { name: document_id, type: STRING, required: true, sensitive: false }
+      - { name: classification, type: STRING, required: true, sensitive: false }
+      - { name: allowed_roles, type: "ARRAY<STRING>", required: false, sensitive: false }
+      - { name: department, type: STRING, required: false, sensitive: false }
+      - { name: owner, type: STRING, required: false, sensitive: false }
+      - { name: version, type: STRING, required: false, sensitive: false }
+      - { name: sensitivity_level, type: STRING, required: false, sensitive: false }
+    required_fields: [ chunk_id, document_id, classification ]
+    sensitive_fields: [ ]
+    forbidden_fields: [ raw_text, embedding_ciphertext, embedding_nonce, key_id ]
+    lineage_upstream: [ gold_embeddings ]
+    lineage_downstream: [ secure_retrieval_service ]
+    security_notes: "Chroma stores embedding vectors and safe metadata only. No text, no encrypted payloads, no keys."
+    sensitive_flags: { has_pii: false, has_credentials: false, is_source_of_truth: false }
+
+  graph_index:
+    id: graph_index
+    name: Graph Index
+    layer: index
+    owner: data_platform
+    description: "Relationship and explainability index using NetworkX. Not the source of truth."
+    classification: internal
+    tags: [ graph, relationships, explainability, networkx ]
+    fields:
+      - { name: node_id, type: STRING, required: true, sensitive: false }
+      - { name: node_type, type: STRING, required: true, sensitive: false }
+      - { name: classification, type: STRING, required: true, sensitive: false }
+      - { name: allowed_roles, type: "ARRAY<STRING>", required: false, sensitive: false }
+      - { name: source_chunk_id, type: STRING, required: false, sensitive: false }
+      - { name: source_document_id, type: STRING, required: false, sensitive: false }
+      - { name: confidence, type: FLOAT, required: false, sensitive: false }
+      - { name: extraction_method, type: STRING, required: false, sensitive: false }
+    required_fields: [ node_id, node_type, classification ]
+    sensitive_fields: [ ]
+    forbidden_fields: [ raw_text, sensitive_label ]
+    lineage_upstream: [ silver_chunks ]
+    lineage_downstream: [ secure_retrieval_service ]
+    security_notes: "Graph nodes/edges include permission metadata. Sensitive labels are never exposed to unauthorized users."
+    sensitive_flags: { has_pii: false, has_credentials: false, is_source_of_truth: false }

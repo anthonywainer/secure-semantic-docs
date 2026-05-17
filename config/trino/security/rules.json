@@ -1,0 +1,55 @@
+{
+  "catalogs": [
+    {
+      "user": "admin",
+      "catalog": ".*",
+      "allow": "all"
+    },
+    {
+      "user": ".*",
+      "catalog": "lakehouse",
+      "allow": "read-only"
+    },
+    {
+      "user": ".*",
+      "catalog": "system",
+      "allow": "none"
+    }
+  ],
+  "schemas": [
+    {
+      "user": "admin",
+      "schema": ".*",
+      "owner": true
+    },
+    {
+      "user": ".*",
+      "catalog": "lakehouse",
+      "schema": "safe",
+      "owner": false
+    }
+  ],
+  "tables": [
+    {
+      "user": "admin",
+      "schema": ".*",
+      "table": ".*",
+      "privileges": [
+        "SELECT",
+        "INSERT",
+        "DELETE",
+        "UPDATE",
+        "OWNERSHIP"
+      ]
+    },
+    {
+      "user": ".*",
+      "catalog": "lakehouse",
+      "schema": "safe",
+      "table": ".*",
+      "privileges": [
+        "SELECT"
+      ]
+    }
+  ]
+}

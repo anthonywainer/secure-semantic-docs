@@ -1,0 +1,17 @@
+{
+  "admin": [
+    "admin"
+  ],
+  "business_analyst": [
+    "business_analyst"
+  ],
+  "security_engineer": [
+    "security_engineer"
+  ],
+  "finance_manager": [
+    "finance_manager"
+  ],
+  "external_viewer": [
+    "external_viewer"
+  ]
+}

@@ -9,30 +9,6 @@ from pyspark.sql import SparkSession
 from secure_semantic_docs.core.spark_partitions import compute_partition_count
 
 
-class _ReaderEntries(Protocol):
-    @property
-    def entries(self) -> Mapping[str, Any]:
-        """Configured reader entries keyed by reader name."""
-        ...  # pragma: no cover
-
-
-class _EmbeddingSettingsConfig(Protocol):
-    @property
-    def embedding(self) -> EmbeddingConfig:
-        """Embedding configuration section."""
-        ...  # pragma: no cover
-
-    @property
-    def readers(self) -> _ReaderEntries:
-        """Reader configuration section."""
-        ...  # pragma: no cover
-
-    @property
-    def raw_documents_dir(self) -> Path:
-        """Directory containing raw documents."""
-        ...  # pragma: no cover
-
-
 @dataclass(frozen=True)
 class EmbeddingConfig:
     """Embedding model settings.
@@ -63,6 +39,30 @@ class EmbeddingConfig:
     device: str = "auto"
     num_partitions: int = 0
     normalize: bool = True
+
+
+class _ReaderEntries(Protocol):
+    @property
+    def entries(self) -> Mapping[str, Any]:
+        """Configured reader entries keyed by reader name."""
+        ...  # pragma: no cover
+
+
+class _EmbeddingSettingsConfig(Protocol):
+    @property
+    def embedding(self) -> EmbeddingConfig:
+        """Embedding configuration section."""
+        ...  # pragma: no cover
+
+    @property
+    def readers(self) -> _ReaderEntries:
+        """Reader configuration section."""
+        ...  # pragma: no cover
+
+    @property
+    def raw_documents_dir(self) -> Path:
+        """Directory containing raw documents."""
+        ...  # pragma: no cover
 
 
 @dataclass(frozen=True)
@@ -130,6 +130,7 @@ def _raw_documents_dir(config: _EmbeddingSettingsConfig) -> str:
 
 def resolve_key_material(config: Any) -> tuple[bytes, str]:
     """Return key material without importing keyring during model import."""
-    from secure_semantic_docs.security.keyring_store import resolve_key_material as _resolve_key_material  # noqa: PLC0415
+    from secure_semantic_docs.security.keyring_store import \
+        resolve_key_material as _resolve_key_material  # noqa: PLC0415
 
     return _resolve_key_material(config)

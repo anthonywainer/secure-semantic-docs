@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import tomllib
 from dataclasses import dataclass
 from functools import lru_cache
-import tomllib
 
 from secure_semantic_docs.core.settings import BaseSettings
 

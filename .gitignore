@@ -147,7 +147,7 @@ warehouse/
 # Chroma (vector store)
 # ───────────────────────────────────────────
 
-# Persistent Chroma synthetic_data directory (local dev only)
+# Persistent Chroma data directory (local dev only)
 chroma_data/
 chroma-data/
 .chroma/
@@ -159,14 +159,6 @@ chroma-data/
 # Downloaded model weights — large binaries, never commit
 .cache/huggingface/
 sentence_transformers_cache/
-
-# ───────────────────────────────────────────
-# OpenMetadata
-# ───────────────────────────────────────────
-
-# Local OpenMetadata server synthetic_data volumes (docker compose)
-openmetadata_data/
-openmetadata-data/
 
 # ───────────────────────────────────────────
 # Secrets and credentials — hard rules
@@ -189,21 +181,17 @@ credentials/
 *.box
 
 # ───────────────────────────────────────────
-# Logs and local synthetic_data
+# Logs and local runtime data
 # ───────────────────────────────────────────
 
 *.log
-logs/
 local_data/
 tmp/
 temp/
 
 # Project-specific
 .local/
-lakehouse/
-vector_store/chroma/
+config/config.local.yml
 
 # Project-specific generated outputs
-!logs/
-logs/*.jsonl
-!logs/.gitkeep
+runtime/

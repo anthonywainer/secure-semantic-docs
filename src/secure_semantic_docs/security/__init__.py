@@ -6,7 +6,6 @@ Public API re-exported from focused sub-modules:
 - :mod:`.secretbox_encryptor` — XSalsa20-Poly1305 encryption
 - :mod:`.secretbox_decryptor` — XSalsa20-Poly1305 decryption
 - :mod:`.chunk_field_encryptor` — chunk field encryption
-- :mod:`.chunk_field_decryptor` — chunk field decryption
 """
 
 from secure_semantic_docs.security.chunk_field_encryptor import encrypt_chunk_fields

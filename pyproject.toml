@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=82", "wheel==0.47"]
+requires = ["setuptools>=81", "wheel==0.47"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "secure-semantic-docs"
-version = "0.4.0"
+version = "0.5.0"
 description = "Secure semantic document search architecture"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -12,21 +12,27 @@ license = { text = "MIT" }
 authors = [{ name = "AnthonyWainer" }]
 dependencies = [
     "keyring>=25.7.0",
-    "numpy>=1.26",
+    "keyrings.alt>=5.0.0",
+    "numpy==2.4.5",
+    "pandas>=2.2.0",
     "py4j>=0.10.9.9",
     "PyNaCl>=1.6.2",
     "pyspark==4.1.1",
     "PyYAML==6.0.3",
-    "ruff>=0.15.12",
-    "sentence-transformers>=5.4.1",
-    "torch>=2.0",
+    "ruff==0.15.13",
+    "sentence-transformers==5.5.0",
+    "streamlit>=1.40.0",
+    "chromadb>=0.5.0",
+    "networkx>=3.3",
+    "torch==2.12.0",
+    "setuptools>=81"
 ]
 
 [dependency-groups]
 dev = [
     "pytest==9.0.3",
     "pytest-cov==7.1.0",
-    "ruff==0.15.12"
+    "ruff==0.15.13"
 ]
 
 

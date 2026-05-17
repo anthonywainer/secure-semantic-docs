@@ -6,7 +6,7 @@ and writes the result.
 
 Schema is defined in::
 
-    resources/catalog_metadata/silver_chunks.ddl
+    config/contracts/schemas/silver_chunks.ddl
 """
 import logging
 

@@ -377,7 +377,7 @@ before layers that change often. Docker reuses a cached layer as long as none of
       && rm -rf /var/lib/apt/lists/*
   ```
 - Document all required environment variables in a `.env.example` file committed to the repository (no real values).
-- Use `docker compose` for local multi-service development (Chroma server, OpenMetadata, Spark, etc.). Keep compose
+- Use `docker compose` for local multi-service development (Chroma server, Spark, etc.). Keep compose
   files under `docker/`.
 
 ---
@@ -543,17 +543,12 @@ before layers that change often. Docker reuses a cached layer as long as none of
 
 ---
 
-## OpenMetadata (Governance and Catalogue)
+## Governance and Catalogue
 
-- Register every Iceberg table (bronze, silver, gold) and every Chroma collection in the OpenMetadata catalogue.
+- Register every Iceberg table (bronze, silver, gold) and every Chroma collection in the project catalogue.
 - Record lineage edges: data source → bronze → silver → gold → Chroma. Keep lineage up to date when pipelines change.
 - Apply classification tags (`PII`, `Sensitive`, `Public`, etc.) to columns and tables during the processing step.
   Do not leave classification as a manual post-hoc activity.
-- Use OpenMetadata's data quality framework to define and run expectations on bronze and silver tables after each
-  ingestion run.
-- Use the OpenMetadata API client inside pipeline code to push metadata programmatically. Do not rely solely on the
-  UI for catalogue updates in automated jobs.
-- Keep OpenMetadata service connection credentials in a secrets manager. Do not hardcode them in pipeline scripts.
 
 ---
 
@@ -565,8 +560,8 @@ before layers that change often. Docker reuses a cached layer as long as none of
 - Use `tmp_path`, `monkeypatch`, and fixtures where appropriate.
 - Keep tests deterministic. Avoid real network calls, wall-clock timing dependencies, and machine-specific assumptions.
 - For bug fixes, add a regression test that fails before the fix and passes after it.
-- Mock Chroma, OpenMetadata, and external model calls in unit tests. Use real clients only in integration tests.
-- Mark tests that require external infrastructure (Spark, Chroma server, OpenMetadata) with appropriate pytest markers
+- Mock Chroma and external model calls in unit tests. Use real clients only in integration tests.
+- Mark tests that require external infrastructure (Spark, Chroma server) with appropriate pytest markers
   so they can be excluded from fast local runs.
 - Test encryption and decryption round-trips for any component that uses PyNaCl.
 - Test that permission metadata is correctly propagated from ingestion through to the gold layer and Chroma.
@@ -582,7 +577,7 @@ src/
   embeddings/       # SentenceTransformers model loading and embedding generation
   vector_store/     # Chroma client wrapper
   lakehouse/        # Iceberg read/write helpers (bronze / silver / gold)
-  governance/       # OpenMetadata API client and lineage registration
+  governance/       # Lineage and catalogue registration helpers
   security/         # PyNaCl encryption/decryption utilities, permission enforcement
   api/              # Serving layer (semantic search, role-based query endpoints)
   config.py         # Centralised configuration loading
