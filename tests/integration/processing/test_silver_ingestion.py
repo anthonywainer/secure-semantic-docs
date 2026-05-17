@@ -17,14 +17,20 @@ def _read_silver_chunks(spark, pipeline_config):
 
 @pytest.mark.integration
 class TestSilverIngest:
-    def test_ingest_produces_chunks(self, spark, tmp_path, monkeypatch):
+    def test_ingest_produces_chunks(self, spark, tmp_path, monkeypatch, seeded_demo_data):
         monkeypatch.setenv("DOCSEC_PROJECT_ROOT", str(tmp_path))
         pipeline_config = load_config(project_root=tmp_path)
         bronze_ingest(spark, pipeline_config)
         ingest(spark, pipeline_config)
         assert _read_silver_chunks(spark, pipeline_config).count() > 0
 
-    def test_silver_schema_has_expected_fields(self, spark, tmp_path, monkeypatch):
+    def test_silver_schema_has_expected_fields(
+        self,
+        spark,
+        tmp_path,
+        monkeypatch,
+        seeded_demo_data
+    ):
         monkeypatch.setenv("DOCSEC_PROJECT_ROOT", str(tmp_path))
         pipeline_config = load_config(project_root=tmp_path)
         bronze_ingest(spark, pipeline_config)
@@ -40,7 +46,13 @@ class TestSilverIngest:
         }
         assert required_silver_fields <= silver_field_names
 
-    def test_silver_chunks_have_document_ids(self, spark, tmp_path, monkeypatch):
+    def test_silver_chunks_have_document_ids(
+        self,
+        spark,
+        tmp_path,
+        monkeypatch,
+        seeded_demo_data
+    ):
         monkeypatch.setenv("DOCSEC_PROJECT_ROOT", str(tmp_path))
         pipeline_config = load_config(project_root=tmp_path)
         bronze_ingest(spark, pipeline_config)

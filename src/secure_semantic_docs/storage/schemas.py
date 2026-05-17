@@ -2,7 +2,7 @@
 
 Schemas are stored as SQL DDL files under::
 
-    src/secure_semantic_docs/resources/catalog_metadata/<schema>.<table>.ddl
+    config/contracts/schemas/<schema>.<table>.ddl
 
 File naming mirrors the Iceberg table layout:
 
@@ -28,7 +28,7 @@ from secure_semantic_docs.core.settings import BaseSettings
 
 logger = get_logger(BaseSettings.APP_NAME)
 
-_SCHEMAS_DIR = BaseSettings.resources_dir / "catalog_metadata"
+_SCHEMAS_DIR = BaseSettings.config_dir / "contracts" / "schemas"
 
 _RE_SQL_COMMENTS: re.Pattern[str] = re.compile(r"--[^\n]*")
 _RE_COMMENT_CLAUSE: re.Pattern[str] = re.compile(r"\bCOMMENT\s+'[^']*'", re.IGNORECASE)

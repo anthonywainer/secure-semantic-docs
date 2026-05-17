@@ -1,6 +1,7 @@
 """One-pass chunking and encrypted embedding generation."""
 
 import logging
+from datetime import UTC, datetime
 
 from pyspark.sql import SparkSession
 
@@ -13,6 +14,10 @@ from secure_semantic_docs.models import Config
 from secure_semantic_docs.processing.chunk_builder import (
     create_chunk_workset,
     select_persisted_chunk_columns
+)
+from secure_semantic_docs.processing.fact_extractor import (
+    extract_facts_df_document_aware,
+    write_facts_jsonl
 )
 
 
@@ -58,20 +63,37 @@ def ingest(spark_session: SparkSession, pipeline_config: Config | None = None) -
             **chunks_writer.options
         )
 
-        logger.info("STEP 4 -- Generate encrypted embeddings")
+        logger.info("STEP 4 -- Extract governed facts")
+        created_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        facts_df = extract_facts_df_document_aware(spark_session, chunk_workset_df, created_at)
+        facts_path = (
+                effective_config.project_root
+                / "runtime"
+                / "metadata"
+                / "facts"
+                / "extracted_facts.jsonl"
+        )
+        write_facts_jsonl(
+            [row.asDict(recursive=True) for row in facts_df.collect()],
+            facts_path
+        )
+        facts_df.unpersist()
+
+        logger.info("STEP 5 -- Generate encrypted embeddings")
         embeddings_df = generate_embeddings(
             spark_session,
             chunk_workset_df,
             effective_config
         )
 
-        logger.info("STEP 5 -- Write encrypted embeddings")
+        logger.info("STEP 6 -- Write encrypted embeddings")
         embeddings_writer = effective_config.writers["gold_embeddings"]
         SparkWriter(spark_session).write(
             embeddings_df,
             **embeddings_writer.options
         )
         embeddings_df.unpersist()
+
         logger.info("Gold write complete")
     finally:
         chunk_workset_df.unpersist()

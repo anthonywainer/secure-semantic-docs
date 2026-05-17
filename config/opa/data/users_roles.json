@@ -1,0 +1,14 @@
+{
+  "users_roles": {
+    "admin": "admin",
+    "business_analyst": "business_analyst",
+    "security_engineer": "security_engineer",
+    "finance_manager": "finance_manager",
+    "external_viewer": "external_viewer",
+    "alice": "data_engineer",
+    "bob": "business_analyst",
+    "carol": "security_engineer",
+    "david": "finance_manager",
+    "eve": "external_viewer"
+  }
+}

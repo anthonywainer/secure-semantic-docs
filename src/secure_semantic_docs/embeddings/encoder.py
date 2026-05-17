@@ -6,9 +6,9 @@ from pyspark import RDD
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import col
 
-from secure_semantic_docs.models.embedding_model import EmbeddingSettings
 from secure_semantic_docs.embeddings.row_encoder import encode_and_encrypt_partition
 from secure_semantic_docs.embeddings.typing import EmbeddingRow
+from secure_semantic_docs.models.embedding_model import EmbeddingSettings
 
 
 def encode_missing_embeddings(

@@ -1,10 +1,10 @@
 """Config builder: assembles a Config instance from YAML files.
 
 Loading order (each layer deep-merges into the previous):
-  1. resources/config.yml      -- bundled base
-  2. resources/config.dev.yml  -- bundled dev overrides (always applied)
-  3. resources/config.prod.yml -- prod overrides (only when DOCSEC_ENV=prod)
-  4. <project_root>/config.local.yml -- machine-local, git-ignored
+  1. config/config.yml      -- base
+  2. config/config.dev.yml  -- dev overrides (always applied)
+  3. config/config.prod.yml -- prod overrides (only when DOCSEC_ENV=prod)
+  4. config/config.local.yml -- machine-local, git-ignored
 
 All configuration values live in the YAML files.  The builder contains no
 Python-side fallback defaults -- a missing key raises KeyError immediately.
@@ -20,6 +20,8 @@ Reader/writer entries use the format::
 
 Values of the form ``{project_root}`` expand to the resolved project root.
 Values of the form ``{resources}`` expand to the bundled resources directory.
+Values of the form ``{config}``, ``{runtime}``, and ``{data}`` expand to
+the corresponding repository root directories.
 Values of the form ``{env[VAR]}`` are expanded from environment variables at
 load time.  Unknown variables expand to an empty string.
 """
@@ -39,18 +41,22 @@ from secure_semantic_docs.models.spark_models import IcebergConfig, SparkConfig
 from secure_semantic_docs.models.writer_models import WriterEntry, WritersConfig
 
 _RESOURCES_DIR = BaseSettings.resources_dir
-_BUNDLED_BASE = [_RESOURCES_DIR / "config.yml", _RESOURCES_DIR / "config.dev.yml"]
-_BUNDLED_PROD = _RESOURCES_DIR / "config.prod.yml"
+_CONFIG_DIR = BaseSettings.config_dir
+_CONFIG_BASE = [_CONFIG_DIR / "config.yml", _CONFIG_DIR / "config.dev.yml"]
+_CONFIG_PROD = _CONFIG_DIR / "config.prod.yml"
 
 _ENV_PATTERN = re.compile(r"\{env\[([^]]+)]}")
 _RESOURCES_PATTERN = re.compile(r"\{resources}")
 _PROJECT_ROOT_PATTERN = re.compile(r"\{project_root}")
+_CONFIG_PATTERN = re.compile(r"\{config}")
+_RUNTIME_PATTERN = re.compile(r"\{runtime}")
+_DATA_PATTERN = re.compile(r"\{data}")
 
 logger = get_logger(BaseSettings.APP_NAME)
 
 
 def _expand_env(value: str, project_root: Path) -> str:
-    """Expand ``{env[VAR]}``, ``{resources}``, and ``{project_root}`` placeholders.
+    """Expand project path placeholders and ``{env[VAR]}`` references.
 
     ``{env[DOCSEC_PROJECT_ROOT]}`` resolves to *project_root* when the
     environment variable is not set, so paths are always valid.
@@ -63,11 +69,18 @@ def _expand_env(value: str, project_root: Path) -> str:
             return os.environ.get(var) or str(project_root)
         return os.environ.get(var) or ""
 
-    return _PROJECT_ROOT_PATTERN.sub(
+    expanded = _PROJECT_ROOT_PATTERN.sub(
         str(project_root),
         _RESOURCES_PATTERN.sub(
             str(_RESOURCES_DIR),
             _ENV_PATTERN.sub(_resolve_var, value)
+        )
+    )
+    return _DATA_PATTERN.sub(
+        str(project_root / "data"),
+        _RUNTIME_PATTERN.sub(
+            str(project_root / "runtime"),
+            _CONFIG_PATTERN.sub(str(project_root / "config"), expanded)
         )
     )
 
@@ -144,15 +157,15 @@ def load_config(project_root: Path | None = None) -> Config:
     logger.debug("Loading config -- project_root=%s", project_root)
 
     raw: dict = {}
-    for bundled in _BUNDLED_BASE:
-        raw = _load_layer(raw, bundled, bundled.name)
+    for config_path in _CONFIG_BASE:
+        raw = _load_layer(raw, config_path, config_path.name)
 
     if os.environ.get("DOCSEC_ENV") == "prod":
-        raw = _load_layer(raw, _BUNDLED_PROD, "prod")
+        raw = _load_layer(raw, _CONFIG_PROD, "prod")
     else:
-        logger.debug("DOCSEC_ENV != prod, skipping %s", _BUNDLED_PROD.name)
+        logger.debug("DOCSEC_ENV != prod, skipping %s", _CONFIG_PROD.name)
 
-    raw = _load_layer(raw, project_root / "config.local.yml", "local")
+    raw = _load_layer(raw, project_root / "config" / "config.local.yml", "local")
 
     cfg = Config(
         project_root=project_root,

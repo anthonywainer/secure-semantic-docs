@@ -1,4 +1,4 @@
-"""Logging configuration helpers backed by ``resources/logging.ini``."""
+"""Logging configuration helpers backed by ``config/logging.ini``."""
 
 from __future__ import annotations
 
@@ -29,10 +29,10 @@ def configure_logging(ini_path: Path | None = None) -> None:
     Parameters
     ----------
     ini_path:
-        Path to a ``logging.ini`` file.  Defaults to the bundled
-        ``resources/logging.ini`` when *None*.
+        Path to a ``logging.ini`` file. Defaults to ``config/logging.ini``
+        when *None*.
     """
-    path: Path = ini_path or (BaseSettings.resources_dir / "logging.ini")
+    path: Path = ini_path or (BaseSettings.config_dir / "logging.ini")
     logging.config.fileConfig(path, disable_existing_loggers=False)
     _emit_startup_banner()
 

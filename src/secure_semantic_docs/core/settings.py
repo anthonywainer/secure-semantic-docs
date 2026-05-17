@@ -22,15 +22,30 @@ class _BaseSettingsMeta(type):
         3. Auto-detected as four directory levels above this file.
         """
         env_root = (
-            os.environ.get(cls.DOCSEC_PROJECT_ROOT)
-            or os.environ.get(cls.DOCSEC_PROJECT_ROOT_LEGACY)
+                os.environ.get(cls.DOCSEC_PROJECT_ROOT)
+                or os.environ.get(cls.DOCSEC_PROJECT_ROOT_LEGACY)
         )
         return Path(env_root) if env_root else Path(__file__).resolve().parents[3]
 
     @property
     def resources_dir(cls) -> Path:
-        """Return the path to the bundled ``resources/`` directory."""
+        """Return the path to the package ``resources/`` directory."""
         return Path(__file__).resolve().parent.parent / "resources"
+
+    @property
+    def config_dir(cls) -> Path:
+        """Return the repository configuration directory."""
+        return cls.project_root / "config"
+
+    @property
+    def runtime_dir(cls) -> Path:
+        """Return the generated runtime output directory."""
+        return cls.project_root / "runtime"
+
+    @property
+    def data_dir(cls) -> Path:
+        """Return the repository input and demo data directory."""
+        return cls.project_root / "data"
 
 
 class BaseSettings(metaclass=_BaseSettingsMeta):
@@ -43,3 +58,6 @@ class BaseSettings(metaclass=_BaseSettingsMeta):
     if TYPE_CHECKING:  # pragma: no cover
         project_root: ClassVar[Path]
         resources_dir: ClassVar[Path]
+        config_dir: ClassVar[Path]
+        runtime_dir: ClassVar[Path]
+        data_dir: ClassVar[Path]

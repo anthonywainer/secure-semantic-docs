@@ -187,7 +187,7 @@ class TestBuildChunkDataframe:
     @staticmethod
     def _setup_raw_docs(tmp_path, files: dict[str, str]):
         """Create raw_documents dir under tmp_path and write given filename→content pairs."""
-        raw_docs_dir = tmp_path / "synthetic_data" / "raw_documents"
+        raw_docs_dir = tmp_path / "data" / "synthetic_data" / "raw_documents"
         raw_docs_dir.mkdir(parents=True)
         for filename, text in files.items():
             (raw_docs_dir / filename).write_text(text, encoding="utf-8")
@@ -473,3 +473,49 @@ class TestEnrichPartition:
 
         with pytest.raises(ValueError, match="chunk_span must be a two-item tuple"):
             _chunk_span(None)
+
+
+class TestIngest:
+    def test_ingest_reads_builds_and_writes(self):
+        """ingest() must call reader, chunk builder, and writer."""
+        from unittest.mock import MagicMock, patch
+        from secure_semantic_docs.silver_ingestion import ingest
+
+        mock_spark = MagicMock()
+        mock_cfg = MagicMock()
+        mock_docs_df = MagicMock()
+        mock_chunks_df = MagicMock()
+
+        mock_cfg.readers = {"bronze_documents": MagicMock(options={"path": "/bronze"})}
+        mock_cfg.writers = {"silver_chunks": MagicMock(options={"path": "/silver"})}
+
+        with (
+            patch("secure_semantic_docs.silver_ingestion.SparkReader") as mock_reader_cls,
+            patch("secure_semantic_docs.silver_ingestion.create_enriched_chunks", return_value=mock_chunks_df),
+            patch("secure_semantic_docs.silver_ingestion.SparkWriter") as mock_writer_cls
+        ):
+            mock_reader_cls.return_value.read.return_value = mock_docs_df
+            ingest(mock_spark, mock_cfg)
+
+        mock_reader_cls.return_value.read.assert_called_once_with(path="/bronze")
+        mock_writer_cls.return_value.write.assert_called_once_with(mock_chunks_df, path="/silver")
+
+    def test_ingest_uses_load_config_when_none(self):
+        """ingest() calls load_config() when pipeline_config is not provided."""
+        from unittest.mock import MagicMock, patch
+        from secure_semantic_docs.silver_ingestion import ingest
+
+        mock_spark = MagicMock()
+        mock_cfg = MagicMock()
+        mock_cfg.readers = {"bronze_documents": MagicMock(options={})}
+        mock_cfg.writers = {"silver_chunks": MagicMock(options={})}
+
+        with (
+            patch("secure_semantic_docs.silver_ingestion.load_config", return_value=mock_cfg) as mock_load,
+            patch("secure_semantic_docs.silver_ingestion.SparkReader"),
+            patch("secure_semantic_docs.silver_ingestion.create_enriched_chunks", return_value=MagicMock()),
+            patch("secure_semantic_docs.silver_ingestion.SparkWriter")
+        ):
+            ingest(mock_spark, None)
+
+        mock_load.assert_called_once()

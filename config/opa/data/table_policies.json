@@ -1,0 +1,92 @@
+{
+  "table_policies": {
+    "safe": {
+      "default_access": [
+        "admin",
+        "business_analyst",
+        "security_engineer",
+        "finance_manager",
+        "external_viewer"
+      ],
+      "tables": {
+        "bronze_documents": [
+          "admin",
+          "business_analyst",
+          "security_engineer",
+          "finance_manager"
+        ],
+        "v_bronze_documents_catalog": [
+          "admin",
+          "business_analyst",
+          "security_engineer",
+          "finance_manager"
+        ],
+        "silver_chunks": [
+          "admin",
+          "business_analyst",
+          "security_engineer",
+          "finance_manager"
+        ],
+        "v_silver_chunks_catalog": [
+          "admin",
+          "business_analyst",
+          "security_engineer",
+          "finance_manager"
+        ],
+        "gold_embedding_catalog": [
+          "admin",
+          "business_analyst",
+          "security_engineer",
+          "finance_manager"
+        ],
+        "v_gold_embedding_catalog": [
+          "admin",
+          "business_analyst",
+          "security_engineer",
+          "finance_manager"
+        ],
+        "v_public_chunks": [
+          "admin",
+          "business_analyst",
+          "security_engineer",
+          "finance_manager",
+          "external_viewer"
+        ],
+        "v_internal_chunks": [
+          "admin",
+          "business_analyst",
+          "security_engineer",
+          "finance_manager"
+        ],
+        "v_audit_events": [
+          "admin"
+        ]
+      }
+    },
+    "raw": {
+      "default_access": [
+        "admin"
+      ],
+      "tables": {
+        "bronze_documents": [
+          "admin"
+        ],
+        "silver_chunks": [
+          "admin"
+        ],
+        "gold_embeddings": [
+          "admin"
+        ]
+      }
+    }
+  },
+  "blocked_columns": [
+    "embedding_ciphertext",
+    "embedding_nonce",
+    "key_id",
+    "raw_text",
+    "decrypted_embedding",
+    "password",
+    "secret"
+  ]
+}

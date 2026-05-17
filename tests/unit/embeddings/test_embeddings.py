@@ -3,6 +3,7 @@
 import logging
 import os
 from collections.abc import Iterator
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -724,10 +725,13 @@ class TestEmbeddingIngest:
         mock_cfg = MagicMock()
         mock_documents_df = MagicMock()
         mock_workset_df = MagicMock()
+        mock_facts_df = MagicMock()
         mock_embeddings_df = MagicMock()
 
+        mock_cfg.project_root = Path("/project")
         mock_cfg.readers.__getitem__.return_value.options = {"format": "delta", "path": "/chunks"}
         mock_cfg.writers.__getitem__.return_value.options = {"format": "delta", "path": "/embeddings"}
+        mock_facts_df.collect.return_value = []
 
         with (
             patch(
@@ -746,6 +750,13 @@ class TestEmbeddingIngest:
                 return_value=mock_embeddings_df
             ) as mock_gen,
             patch(
+                "secure_semantic_docs.gold_ingestion.extract_facts_df_document_aware",
+                return_value=mock_facts_df
+            ) as mock_extract_facts,
+            patch(
+                "secure_semantic_docs.gold_ingestion.write_facts_jsonl"
+            ),
+            patch(
                 "secure_semantic_docs.gold_ingestion.SparkWriter"
             ) as mock_writer_cls
         ):
@@ -756,8 +767,10 @@ class TestEmbeddingIngest:
 
         mock_reader_cls.return_value.read.assert_called_once()
         mock_workset.assert_called_once_with(mock_spark, mock_documents_df, mock_cfg)
+        mock_extract_facts.assert_called_once()
         mock_gen.assert_called_once_with(mock_spark, mock_workset_df, mock_cfg)
         assert mock_writer_cls.return_value.write.call_count == 2
+        mock_facts_df.unpersist.assert_called_once()
         mock_workset_df.unpersist.assert_called_once()
 
     def test_ingest_loads_config_when_none(self):
@@ -769,7 +782,11 @@ class TestEmbeddingIngest:
         with (
             patch("secure_semantic_docs.gold_ingestion.load_config", return_value=mock_cfg) as mock_load,
             patch("secure_semantic_docs.gold_ingestion.SparkReader"),
+            patch("secure_semantic_docs.gold_ingestion.create_chunk_workset", return_value=MagicMock()),
+            patch("secure_semantic_docs.gold_ingestion.select_persisted_chunk_columns", return_value=MagicMock()),
             patch("secure_semantic_docs.gold_ingestion.generate_embeddings", return_value=MagicMock()),
+            patch("secure_semantic_docs.gold_ingestion.extract_facts_df_document_aware", return_value=MagicMock()),
+            patch("secure_semantic_docs.gold_ingestion.write_facts_jsonl"),
             patch("secure_semantic_docs.gold_ingestion.SparkWriter")
         ):
             from secure_semantic_docs.gold_ingestion import ingest

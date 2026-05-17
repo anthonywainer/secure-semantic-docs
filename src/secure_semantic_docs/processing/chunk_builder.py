@@ -4,7 +4,8 @@ Transforms a metadata DataFrame into a chunk DataFrame with sensitivity
 metadata attached. File content is read from the filesystem at partition time
 using the ``source_path`` reference in each row.
 
-The public entry point is :func:`create_enriched_chunks`.
+The public entry points are :func:`create_enriched_chunks` and
+:func:`create_chunk_workset`.
 """
 
 from __future__ import annotations

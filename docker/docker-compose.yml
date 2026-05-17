@@ -1,0 +1,184 @@
+# Secure Semantic Docs — Enterprise Stack
+# Start:    docker compose -f docker/docker-compose.yml up --build
+# Stop:     docker compose -f docker/docker-compose.yml down -v
+#
+# Ingest:   docker compose -f docker/docker-compose.yml --profile ingest up pipeline --build
+# UI:       docker compose -f docker/docker-compose.yml --profile ui up --build
+#
+# Service URLs:
+#   Streamlit:  http://localhost:8501
+#   Chroma:     http://localhost:8000
+#   Trino:      http://localhost:8080
+#   OPA:        http://localhost:8181
+#   Superset:   http://localhost:8088
+
+services:
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: secure_docs_chroma
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../runtime/vector_store/chroma:/chroma/chroma
+    environment:
+      IS_PERSISTENT: "TRUE"
+      ANONYMIZED_TELEMETRY: "FALSE"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/8000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  trino:
+    image: trinodb/trino:406
+    container_name: secure_docs_trino
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../config/trino/etc:/etc/trino
+      - ../config/trino/catalog:/etc/trino/catalog
+      - ../config/trino/security:/etc/trino/security
+      - ../runtime/metadata/trino/metastore:/data/metastore
+      - ../runtime/lakehouse:/data/lakehouse:ro
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/v1/info" ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  trino-init:
+    image: trinodb/trino:406
+    container_name: secure_docs_trino_init
+    depends_on:
+      trino:
+        condition: service_healthy
+    volumes:
+      - ../config/trino/init:/init:ro
+      - ../runtime/lakehouse:/data/lakehouse:ro
+    command: [ "trino", "--server", "http://trino:8080", "--user", "admin", "--file", "/init/init_tables.sql" ]
+    restart: "no"
+
+  opa:
+    image: openpolicyagent/opa:0.68.0
+    platform: ${DOCKER_PLATFORM:-linux/amd64}
+    container_name: secure_docs_opa
+    ports:
+      - "8181:8181"
+    volumes:
+      - ../config/opa/policies:/app/policies:ro
+      - ../config/opa/data:/app/data:ro
+    command: [ "run", "--server", "--addr=:8181", "--log-level=info", "/app/policies/", "/app/data/" ]
+    healthcheck:
+      test: [ "CMD", "/opa", "eval", "--data", "/app/data/", "data" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  superset-db:
+    image: postgres:15-alpine
+    container_name: secure_docs_superset_db
+    environment:
+      POSTGRES_DB: superset
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset_demo_pass
+    volumes:
+      - superset_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U superset" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  superset:
+    build:
+      context: ..
+      dockerfile: docker/superset/Dockerfile
+    container_name: secure_docs_superset
+    ports:
+      - "8088:8088"
+    environment:
+      SUPERSET_SECRET_KEY: demo_superset_secret_key_not_for_production
+      DATABASE_URL: postgresql://superset:superset_demo_pass@superset-db:5432/superset
+      SQLALCHEMY_DATABASE_URI: postgresql://superset:superset_demo_pass@superset-db:5432/superset
+      SUPERSET_ENV: production
+      TRINO_HOST: trino
+      TRINO_PORT: "8080"
+    depends_on:
+      superset-db:
+        condition: service_healthy
+      trino:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8088/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  superset-init:
+    build:
+      context: ..
+      dockerfile: docker/superset/Dockerfile
+    container_name: secure_docs_superset_init
+    command: [ "/app/init_superset.sh" ]
+    environment:
+      SUPERSET_SECRET_KEY: demo_superset_secret_key_not_for_production
+      DATABASE_URL: postgresql://superset:superset_demo_pass@superset-db:5432/superset
+      SQLALCHEMY_DATABASE_URI: postgresql://superset:superset_demo_pass@superset-db:5432/superset
+      SUPERSET_ENV: production
+      TRINO_HOST: trino
+      TRINO_PORT: "8080"
+    depends_on:
+      superset:
+        condition: service_healthy
+    restart: "no"
+
+  pipeline:
+    build:
+      context: ..
+      dockerfile: docker/app/Dockerfile
+    image: secure-semantic-docs:py314
+    container_name: secure_docs_pipeline
+    env_file:
+      - .env
+    volumes:
+      - ../runtime/lakehouse:/app/runtime/lakehouse
+      - ../runtime/logs:/app/runtime/logs
+      - ../runtime/metadata:/app/runtime/metadata
+      - ../data:/app/data:ro
+      - ../config:/app/config:ro
+    profiles:
+      - ingest
+    restart: "no"
+
+  streamlit-ui:
+    build:
+      context: ..
+      dockerfile: docker/app/Dockerfile
+    image: secure-semantic-docs:py314
+    container_name: secure_docs_streamlit_ui
+    entrypoint: [ "streamlit", "run", "src/secure_semantic_docs/query_ui.py", "--server.port=8501", "--server.address=0.0.0.0" ]
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      DOCSEC_PROJECT_ROOT: /app
+      CHROMA_HOST: chroma
+      CHROMA_PORT: "8000"
+    volumes:
+      - ../runtime/lakehouse:/app/runtime/lakehouse
+      - ../runtime/logs:/app/runtime/logs
+      - ../runtime/metadata:/app/runtime/metadata
+      - ../data:/app/data:ro
+      - ../config:/app/config:ro
+    depends_on:
+      chroma:
+        condition: service_healthy
+    profiles:
+      - ui
+
+volumes:
+  superset_db_data:

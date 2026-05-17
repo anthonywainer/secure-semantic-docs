@@ -1,0 +1,80 @@
+roles:
+  admin:
+    clearance_level: restricted
+    description: Platform administrator with governed access to all safe views and text retrieval
+    capabilities:
+      can_access_all_records: true
+      can_decrypt_text: true
+      can_view_encrypted_payloads: false
+      can_view_secret_keys: false
+      can_view_decrypted_embeddings: false
+
+  data_engineer:
+    clearance_level: internal
+    description: Data engineer with internal clearance
+    capabilities:
+      can_access_all_records: false
+      can_decrypt_text: true
+      can_view_encrypted_payloads: false
+      can_view_secret_keys: false
+      can_view_decrypted_embeddings: false
+
+  business_analyst:
+    clearance_level: internal
+    description: Business analyst with internal clearance
+    capabilities:
+      can_access_all_records: false
+      can_decrypt_text: true
+      can_view_encrypted_payloads: false
+      can_view_secret_keys: false
+      can_view_decrypted_embeddings: false
+
+  security_engineer:
+    clearance_level: confidential
+    description: Security engineer with confidential clearance
+    capabilities:
+      can_access_all_records: false
+      can_decrypt_text: true
+      can_view_encrypted_payloads: false
+      can_view_secret_keys: false
+      can_view_decrypted_embeddings: false
+
+  finance_manager:
+    clearance_level: confidential
+    description: Finance manager with confidential clearance
+    capabilities:
+      can_access_all_records: false
+      can_decrypt_text: true
+      can_view_encrypted_payloads: false
+      can_view_secret_keys: false
+      can_view_decrypted_embeddings: false
+
+  external_viewer:
+    clearance_level: public
+    description: External viewer with read-only access to public records
+    capabilities:
+      can_access_all_records: false
+      can_decrypt_text: false
+      can_view_encrypted_payloads: false
+      can_view_secret_keys: false
+      can_view_decrypted_embeddings: false
+
+  compliance_officer:
+    clearance_level: confidential
+    description: Compliance officer with confidential clearance
+    capabilities:
+      can_access_all_records: false
+      can_decrypt_text: true
+      can_view_encrypted_payloads: false
+      can_view_secret_keys: false
+      can_view_decrypted_embeddings: false
+
+  hr_manager:
+    clearance_level: confidential
+    description: HR manager with confidential clearance
+    capabilities:
+      can_access_all_records: false
+      can_decrypt_text: true
+      can_view_encrypted_payloads: false
+      can_view_secret_keys: false
+      can_view_decrypted_embeddings: false

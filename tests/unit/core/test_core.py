@@ -95,7 +95,7 @@ class TestProjectMetadata:
         metadata = load_project_metadata()
 
         assert metadata.name == "secure-semantic-docs"
-        assert metadata.version == "0.4.0"
+        assert metadata.version == "0.5.0"
         assert metadata.author == "AnthonyWainer"
 
 
@@ -171,3 +171,12 @@ class TestBuildSparkSessionUnit:
             ms.builder.config.return_value.getOrCreate.return_value = mock_session
             build_spark_session(cfg)
         mock_session.sparkContext.setLogLevel.assert_called_once()
+
+    def test_reuses_existing_active_session(self):
+        """build_spark_session returns an already-active session without creating a new one."""
+        existing_session = MagicMock()
+        existing_session.sparkContext.appName = "existing-app"
+        with patch("secure_semantic_docs.core.spark.SparkSession") as ms:
+            ms.getActiveSession.return_value = existing_session
+            result = build_spark_session()
+        assert result is existing_session

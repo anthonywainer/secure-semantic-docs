@@ -23,9 +23,9 @@ to :class:`pyspark.SparkConf`.
 
 Iceberg JAR compatibility note
 -------------------------------
-PySpark 3.5 uses Scala 2.12 -> ``iceberg-spark-runtime-3.5_2.12:1.6.1``
-PySpark 4.0+ uses Scala 2.13 -> ``iceberg-spark-runtime-4.0_2.13:<version>``
-Update ``spark.jars.packages`` in ``config.prod.yml`` accordingly.
+PySpark 4.0+ uses Scala 2.13 -> ``iceberg-spark-runtime-4.0_2.13:1.10.0``
+Update ``spark.jars.packages`` in ``config/config.yml`` and the Docker runtime URL
+when the Iceberg version changes.
 """
 
 from __future__ import annotations

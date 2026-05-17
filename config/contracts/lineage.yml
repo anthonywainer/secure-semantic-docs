@@ -1,0 +1,13 @@
+lineage:
+  - { source: landing_documents, target: bronze_documents, type: ingestion }
+  - { source: bronze_documents, target: silver_chunks, type: transformation }
+  - { source: silver_chunks, target: gold_embeddings, type: transformation }
+  - { source: gold_embeddings, target: trino_governed_views, type: serving }
+  - { source: gold_embeddings, target: chroma_vector_index, type: indexing }
+  - { source: gold_embeddings, target: secure_retrieval_service, type: service }
+  - { source: silver_chunks, target: graph_index, type: indexing }
+  - { source: chroma_vector_index, target: secure_retrieval_service, type: candidate_retrieval }
+  - { source: graph_index, target: secure_retrieval_service, type: graph_retrieval }
+  - { source: trino_governed_views, target: superset_sql_ui, type: presentation }
+  - { source: secure_retrieval_service, target: streamlit_governed_ui, type: presentation }
+  - { source: streamlit_governed_ui, target: audit_events, type: logging }

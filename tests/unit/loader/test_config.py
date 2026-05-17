@@ -1,8 +1,8 @@
 """Tests for YAML-driven configuration loading.
 
-Bundled config files (config.yml + config.dev.yml) live inside the package
-resources and are always loaded.  Only config.local.yml is read from
-*project_root*, making it the sole machine-local override path tested here.
+Project config files (config.yml + config.dev.yml) live under config/ and are
+always loaded. Only config/config.local.yml is read from *project_root*, making
+it the sole machine-local override path tested here.
 """
 
 import pytest
@@ -72,7 +72,7 @@ class TestLoadYamlFile:
 
 
 class TestLoadConfigBundledDefaults:
-    """Bundled resources/config.yml + resources/config.dev.yml are always loaded."""
+    """Project config/config.yml + config/config.dev.yml are always loaded."""
 
     def test_bundled_spark_master(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
@@ -101,17 +101,21 @@ class TestLoadConfigBundledDefaults:
 
 
 class TestLocalOverride:
-    """config.local.yml at project_root overrides bundled settings."""
+    """config/config.local.yml under project_root overrides defaults."""
 
     def test_local_overrides_spark_partitions(self, tmp_path):
-        (tmp_path / "config.local.yml").write_text(
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "config.local.yml").write_text(
             "spark_confs:\n  spark.sql.shuffle.partitions: 8\n"
         )
         cfg = load_config(project_root=tmp_path)
         assert cfg.spark.confs["spark.sql.shuffle.partitions"] == "8"
 
     def test_local_adds_new_reader(self, tmp_path):
-        (tmp_path / "config.local.yml").write_text(
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "config.local.yml").write_text(
             "readers:\n  my_source:\n    stream: false\n    options:\n      format: csv\n"
         )
         cfg = load_config(project_root=tmp_path)
@@ -126,8 +130,8 @@ class TestConfigPaths:
 
     def test_derived_paths_relative_to_root(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
-        assert cfg.bronze_dir == tmp_path / "lakehouse" / "bronze_documents"
-        assert cfg.logs_dir == tmp_path / "logs"
+        assert cfg.bronze_dir == tmp_path / "runtime" / "lakehouse" / "bronze_documents"
+        assert cfg.logs_dir == tmp_path / "runtime" / "logs"
 
 
 class TestEnvVarOverride:
@@ -153,7 +157,9 @@ class TestEnvVarOverride:
 class TestEnvExpansion:
     def test_env_placeholder_expanded_in_options(self, tmp_path, monkeypatch):
         monkeypatch.setenv("MY_DATA_DIR", "/synthetic_data/lake")
-        (tmp_path / "config.local.yml").write_text(
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "config.local.yml").write_text(
             "readers:\n  my_source:\n    options:\n      path: \"{env[MY_DATA_DIR]}/input\"\n"
         )
         cfg = load_config(project_root=tmp_path)
@@ -161,45 +167,51 @@ class TestEnvExpansion:
 
     def test_unknown_env_var_expands_to_empty(self, tmp_path, monkeypatch):
         monkeypatch.delenv("UNKNOWN_VAR", raising=False)
-        (tmp_path / "config.local.yml").write_text(
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "config.local.yml").write_text(
             "readers:\n  src:\n    options:\n      path: \"{env[UNKNOWN_VAR]}/x\"\n"
         )
         cfg = load_config(project_root=tmp_path)
         assert cfg.readers["src"].options["path"] == "/x"
 
     def test_project_root_placeholder_expanded(self, tmp_path):
-        (tmp_path / "config.local.yml").write_text(
-            "readers:\n  lake:\n    options:\n      path: \"{project_root}/lakehouse\"\n"
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "config.local.yml").write_text(
+            "readers:\n  lake:\n    options:\n      path: \"{project_root}/runtime/lakehouse\"\n"
         )
         cfg = load_config(project_root=tmp_path)
-        assert cfg.readers["lake"].options["path"] == str(tmp_path / "lakehouse")
+        assert cfg.readers["lake"].options["path"] == str(tmp_path / "runtime" / "lakehouse")
 
     def test_docsec_project_root_env_placeholder_falls_back_to_root(
             self, tmp_path, monkeypatch
     ):
         monkeypatch.delenv("DOCSEC_PROJECT_ROOT", raising=False)
-        (tmp_path / "config.local.yml").write_text(
-            "readers:\n  lake:\n    options:\n      path: \"{env[DOCSEC_PROJECT_ROOT]}/lakehouse\"\n"
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "config.local.yml").write_text(
+            "readers:\n  lake:\n    options:\n      path: \"{env[DOCSEC_PROJECT_ROOT]}/runtime/lakehouse\"\n"
         )
         cfg = load_config(project_root=tmp_path)
-        assert cfg.readers["lake"].options["path"] == str(tmp_path / "lakehouse")
+        assert cfg.readers["lake"].options["path"] == str(tmp_path / "runtime" / "lakehouse")
 
 
 class TestConfigImmutability:
     def test_config_is_frozen(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
         with pytest.raises((AttributeError, TypeError)):
-            setattr(cfg, "project_root", tmp_path)
+            cfg.project_root = tmp_path
 
     def test_spark_config_is_frozen(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
         with pytest.raises((AttributeError, TypeError)):
-            setattr(cfg.spark, "confs", {})
+            cfg.spark.confs = {}
 
     def test_readers_config_is_frozen(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
         with pytest.raises((AttributeError, TypeError)):
-            setattr(cfg.readers, "entries", {})
+            cfg.readers.entries = {}
 
 
 class TestSubConfigTypes:
@@ -281,16 +293,16 @@ class TestWritersConfigGet:
 class TestAdditionalPaths:
     def test_data_dir(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
-        assert cfg.data_dir == tmp_path / "synthetic_data"
+        assert cfg.data_dir == tmp_path / "data" / "synthetic_data"
 
     def test_raw_documents_dir(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
-        assert cfg.raw_documents_dir == tmp_path / "synthetic_data" / "raw_documents"
+        assert cfg.raw_documents_dir == tmp_path / "data" / "synthetic_data" / "raw_documents"
 
     def test_metadata_dir(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
-        assert cfg.metadata_dir == tmp_path / "synthetic_data" / "metadata"
+        assert cfg.metadata_dir == tmp_path / "data" / "synthetic_data" / "metadata"
 
     def test_users_dir(self, tmp_path):
         cfg = load_config(project_root=tmp_path)
-        assert cfg.users_dir == tmp_path / "synthetic_data" / "users"
+        assert cfg.users_dir == tmp_path / "data" / "synthetic_data" / "users"

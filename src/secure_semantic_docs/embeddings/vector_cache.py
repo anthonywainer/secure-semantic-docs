@@ -22,8 +22,8 @@ from __future__ import annotations
 import logging
 
 from py4j.protocol import Py4JJavaError
-from pyspark.sql import DataFrame, SparkSession
 from pyspark.errors import AnalysisException, PySparkException
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, isnotnull
 
 from secure_semantic_docs.core import BaseSettings

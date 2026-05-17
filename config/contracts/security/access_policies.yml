@@ -1,0 +1,37 @@
+default_policy:
+  unknown_user: deny
+  missing_classification: deny
+  missing_allowed_roles_for_confidential: deny
+  admin_sees_decrypted_embeddings: false
+  admin_sees_secret_keys: false
+
+classification_policies:
+  public:
+    accessible_to_all: true
+    required_clearance_levels: [ ]
+    requires_allowed_role: false
+    requires_department_match: false
+
+  internal:
+    accessible_to_all: false
+    required_clearance_levels:
+      - internal
+      - confidential
+      - restricted
+    requires_allowed_role: false
+    requires_department_match: false
+
+  confidential:
+    accessible_to_all: false
+    required_clearance_levels:
+      - confidential
+      - restricted
+    requires_allowed_role: true
+    requires_department_match: false
+
+  restricted:
+    accessible_to_all: false
+    required_clearance_levels:
+      - restricted
+    requires_allowed_role: true
+    requires_department_match: true

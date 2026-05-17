@@ -1,0 +1,11 @@
+levels:
+  - public
+  - internal
+  - confidential
+  - restricted
+
+clearance_order:
+  public: 0
+  internal: 1
+  confidential: 2
+  restricted: 3

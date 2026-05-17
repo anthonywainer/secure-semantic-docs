@@ -5,9 +5,9 @@ from pyspark.sql import SparkSession
 
 from secure_semantic_docs.core import BaseSettings, configure_logging, ingest_log_execution
 from secure_semantic_docs.core.spark import build_spark_session
-from secure_semantic_docs.processing.metadata_builder import conform_document_metadata
 from secure_semantic_docs.io import SparkReader, SparkWriter
 from secure_semantic_docs.loader import Config, load_config
+from secure_semantic_docs.processing.metadata_builder import conform_document_metadata
 
 
 @ingest_log_execution

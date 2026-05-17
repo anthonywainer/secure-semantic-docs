@@ -1,0 +1,5 @@
+[server]
+# Disable the file watcher to prevent Streamlit from scanning installed
+# packages (e.g. transformers) that trigger optional imports such as
+# torchvision, which has no Python 3.14 wheel yet.
+fileWatcherType = "none"
